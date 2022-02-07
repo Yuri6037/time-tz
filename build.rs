@@ -1,0 +1,128 @@
+// Copyright (c) 2022, Yuri6037
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+// this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+// this list of conditions and the following disclaimer in the documentation
+// and/or other materials provided with the distribution.
+// * Neither the name of time-tz nor the names of its contributors
+// may be used to endorse or promote products derived from this software
+// without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Code inspired from https://github.com/chronotope/chrono-tz/blob/main/chrono-tz-build/src/lib.rs
+
+use std::collections::BTreeSet;
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use parse_zoneinfo::line::{Line, LineParser};
+use parse_zoneinfo::table::{Table, TableBuilder};
+use parse_zoneinfo::transitions::TableTransitions;
+
+const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
+
+fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::io::Result<()>
+{
+    let zones: BTreeSet<&String> = table.zonesets.keys().chain(table.links.keys()).collect();
+    let mut map = phf_codegen::Map::new();
+    for zone in zones {
+        let timespans = table.timespans(zone).unwrap();
+        let zone_name_static = zone
+            .replace("/", "__")
+            .replace("-", "_")
+            .replace("+", "plus").to_uppercase();
+        writeln!(file, "static {}: FixedTimespanSet = FixedTimespanSet {{", zone_name_static)?;
+        writeln!(file, "    first: FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }},",
+                 timespans.first.utc_offset,
+                 timespans.first.dst_offset,
+                 timespans.first.name)?;
+        writeln!(file, "    others: &[")?;
+        for (start, span) in timespans.rest {
+            writeln!(file, "        ({}, FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }}),",
+                     start,
+                     span.utc_offset,
+                     span.dst_offset,
+                     span.name)?;
+        }
+        writeln!(file, "    ]")?;
+        writeln!(file, "}};")?;
+        map.entry(zone, &format!("&{}", zone_name_static));
+    }
+    writeln!(file, "static TIMEZONES: Map<&'static str, &'static FixedTimespanSet> = {};", map.build())?;
+    Ok(())
+}
+
+fn write_timezones_file(table: &Table)
+{
+    let path = std::env::var_os("OUT_DIR")
+        .map(PathBuf::from)
+        .expect("Couldn't obtain cargo OUT_DIR")
+        .join("timezones.rs");
+    let file = File::create(path)
+        .expect("Couldn't create timezones file");
+    let mut writer = BufWriter::new(file); //not sure yet.
+    internal_write_timezones(&mut writer, table).expect("Couldn't write timezones file");
+}
+
+fn main() {
+    let tzfiles = [
+        "tz/africa",
+        "tz/antarctica",
+        "tz/asia",
+        "tz/australasia",
+        "tz/backward",
+        "tz/etcetera",
+        "tz/europe",
+        "tz/northamerica",
+        "tz/southamerica",
+    ];
+
+    let lines = tzfiles.iter().map(Path::new)
+        .map(File::open)
+        .map(|v| v.expect("Failed to open one ore more tz databse file(s)"))
+        .map(BufReader::new)
+        .flat_map(|v| v.lines())
+        .map(|v| v.expect("Filed to read one ore more tz databse file(s)"))
+        .filter_map(|mut v| { //Pre-filter to get rid of comment-only lines as there are a lot.
+            if let Some(i) = v.find('#') {
+                v.truncate(i);
+            }
+            if v.is_empty() {
+                None
+            } else {
+                Some(v)
+            }
+        });
+    let mut builder = TableBuilder::new();
+    let parser = LineParser::new();
+    for line in lines {
+        match parser.parse_str(&line).expect(PARSE_FAILURE) {
+            Line::Space => {},
+            Line::Zone(v) => builder.add_zone_line(v).expect(PARSE_FAILURE),
+            Line::Continuation(v) => builder.add_continuation_line(v).expect(PARSE_FAILURE),
+            Line::Rule(v) => builder.add_rule_line(v).expect(PARSE_FAILURE),
+            Line::Link(v) => builder.add_link_line(v).expect(PARSE_FAILURE)
+        }
+    }
+    let table = builder.build();
+    write_timezones_file(&table);
+    //Only run when tz database actually changes (avoids re-running complex logic).
+    println!("cargo:rerun-if-changed=./tz");
+}

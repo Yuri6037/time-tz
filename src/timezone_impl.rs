@@ -26,14 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod timezone_impl;
-pub mod timezones;
+pub struct FixedTimespan {
+    /// The number of seconds offset from UTC during this timespan.
+    pub utc_offset: i64,
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+    /// The number of *extra* daylight-saving seconds during this timespan.
+    pub dst_offset: i64,
+
+    /// The abbreviation in use during this timespan.
+    pub name: &'static str,
+}
+
+pub struct FixedTimespanSet
+{
+    pub first: FixedTimespan,
+    pub others: &'static [(i64, FixedTimespan)]
 }

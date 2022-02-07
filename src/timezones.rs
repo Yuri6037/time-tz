@@ -26,14 +26,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod timezone_impl;
-pub mod timezones;
+use crate::timezone_impl::FixedTimespan;
+use crate::timezone_impl::FixedTimespanSet;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+use phf::Map;
+
+include!(concat!(env!("OUT_DIR"), "/timezones.rs"));
+
+pub fn get(name: &str) -> Option<&FixedTimespanSet> {
+    TIMEZONES.get(name).map(|v| *v)
 }
