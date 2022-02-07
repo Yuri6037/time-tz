@@ -26,14 +26,58 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
+
+pub trait TimeZone
+{
+    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> UtcOffset;
+}
+
+pub trait OffsetDateTimeExt
+{
+    fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+}
+
+pub trait PrimitiveDateTimeExt
+{
+    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+}
+
+impl PrimitiveDateTimeExt for PrimitiveDateTime {
+    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
+        let offset = tz.get_offset_utc(&self.assume_utc());
+        self.assume_offset(offset)
+    }
+}
+
+impl OffsetDateTimeExt for OffsetDateTime {
+    fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
+        let offset = tz.get_offset_utc(self);
+        self.to_offset(offset)
+    }
+}
+
 mod timezone_impl;
-pub mod timezones;
+mod timezones;
+mod binary_search;
+
+pub use timezone_impl::Tz;
+pub use timezones::get;
 
 #[cfg(test)]
 mod tests {
+    use crate::get;
+    use time::macros::datetime;
+    use crate::PrimitiveDateTimeExt;
+    use crate::OffsetDateTimeExt;
+
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn london_to_berlin() {
+        let london = get("Europe/London").unwrap();
+        let berlin = get("Europe/Berlin").unwrap();
+        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(&london);
+        let converted = dt.to_timezone(&berlin);
+        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(&berlin);
+        assert_eq!(converted, expected);
     }
 }

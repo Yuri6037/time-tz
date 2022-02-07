@@ -26,14 +26,63 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cmp::Ordering;
+use std::ops::Index;
+use crate::binary_search::binary_search;
+use time::{OffsetDateTime, UtcOffset};
+use crate::TimeZone;
+
+//Inspired from https://github.com/chronotope/chrono-tz/blob/main/src/timezone_impl.rs
+
+struct Span {
+    start: Option<i64>,
+    end: Option<i64>
+}
+
+impl Span {
+    fn cmp(&self, x: i64) -> Ordering {
+        /*match (self.start, self.end) {
+            (Some(start), Some(end)) => {
+                if value >= start && value < end {
+                    Ordering::Equal
+                } else if value >= start && value <= end {
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                }
+            },
+            (Some(start), None) => {
+                if value >= start {
+                    Ordering::Equal
+                } else {
+                    Ordering::Greater
+                }
+            },
+            (None, Some(end)) => {
+                if value >= end {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            },
+            (None, None) => Ordering::Equal
+        }*/
+        match (self.start, self.end) {
+            (Some(a), Some(b)) if a <= x && x < b => Ordering::Equal,
+            (Some(a), Some(b)) if a <= x && b <= x => Ordering::Less,
+            (Some(_), Some(_)) => Ordering::Greater,
+            (Some(a), None) if a <= x => Ordering::Equal,
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(b)) if b <= x => Ordering::Less,
+            (None, Some(_)) => Ordering::Equal,
+            (None, None) => Ordering::Equal,
+        }
+    }
+}
+
 pub struct FixedTimespan {
-    /// The number of seconds offset from UTC during this timespan.
     pub utc_offset: i64,
-
-    /// The number of *extra* daylight-saving seconds during this timespan.
     pub dst_offset: i64,
-
-    /// The abbreviation in use during this timespan.
     pub name: &'static str,
 }
 
@@ -41,4 +90,54 @@ pub struct FixedTimespanSet
 {
     pub first: FixedTimespan,
     pub others: &'static [(i64, FixedTimespan)]
+}
+
+impl FixedTimespanSet {
+    fn len(&self) -> usize {
+        1 + self.others.len()
+    }
+
+    fn span_utc(&self, i: usize) -> Span {
+        let start = match i {
+            0 => None,
+            _ => Some(self.others[i - 1].0)
+        };
+        let end;
+        if i >= self.others.len() {
+            end = None;
+        } else {
+            end = Some(self.others[i].0)
+        }
+        Span { start, end }
+    }
+}
+
+impl Index<usize> for FixedTimespanSet {
+    type Output = FixedTimespan;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        debug_assert!(index < self.len());
+        match index {
+            0 => &self.first,
+            _ => &self.others[index - 1].1
+        }
+    }
+}
+
+pub struct Tz {
+    set: &'static FixedTimespanSet
+}
+
+impl TimeZone for Tz {
+    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> UtcOffset {
+        let timestamp = date_time.unix_timestamp();
+        let index = binary_search(0, self.set.len(),
+                                  |i| self.set.span_utc(i).cmp(timestamp)).unwrap();
+        let secs = &self.set[index].utc_offset;
+        UtcOffset::from_whole_seconds(*secs as i32).unwrap()
+    }
+}
+
+pub fn internal_tz_new(set: &'static FixedTimespanSet) -> Tz {
+    Tz { set }
 }
