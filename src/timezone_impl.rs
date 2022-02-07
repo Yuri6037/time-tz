@@ -41,32 +41,6 @@ struct Span {
 
 impl Span {
     fn cmp(&self, x: i64) -> Ordering {
-        /*match (self.start, self.end) {
-            (Some(start), Some(end)) => {
-                if value >= start && value < end {
-                    Ordering::Equal
-                } else if value >= start && value <= end {
-                    Ordering::Less
-                } else {
-                    Ordering::Greater
-                }
-            },
-            (Some(start), None) => {
-                if value >= start {
-                    Ordering::Equal
-                } else {
-                    Ordering::Greater
-                }
-            },
-            (None, Some(end)) => {
-                if value >= end {
-                    Ordering::Less
-                } else {
-                    Ordering::Equal
-                }
-            },
-            (None, None) => Ordering::Equal
-        }*/
         match (self.start, self.end) {
             (Some(a), Some(b)) if a <= x && x < b => Ordering::Equal,
             (Some(a), Some(b)) if a <= x && b <= x => Ordering::Less,
