@@ -1,0 +1,17 @@
+# Binary directory
+target
+
+# Sometime Cargo.lock causes merge bugs so ignore it
+Cargo.lock
+
+# Temporary CI file
+versionfile.txt
+
+# IDE files
+.idea
+.vscode
+
+# Apple specific
+.DS_Store
+.AppleDouble
+.LSOverride
