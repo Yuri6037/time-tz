@@ -2,6 +2,13 @@
 name = "time-tz"
 version = "0.1.0"
 edition = "2021"
+authors = ["Yuri Edward <yuri6037@outlook.com>"]
+description = "Implementation of tz database (IANA) for time Rust crate."
+license = "BSD-3-Clause"
+repository = "https://github.com/Yuri6037/time-tz"
+readme = "./README.MD"
+keywords = ["time", "tz"]
+categories = ["date-and-time"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
