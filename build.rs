@@ -77,7 +77,7 @@ fn write_timezones_file(table: &Table)
         .join("timezones.rs");
     let file = File::create(path)
         .expect("Couldn't create timezones file");
-    let mut writer = BufWriter::new(file); //not sure yet.
+    let mut writer = BufWriter::new(file);
     internal_write_timezones(&mut writer, table).expect("Couldn't write timezones file");
 }
 
