@@ -54,12 +54,14 @@ impl Span {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FixedTimespan {
     pub utc_offset: i64,
     pub dst_offset: i64,
     pub name: &'static str,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct FixedTimespanSet
 {
     pub first: FixedTimespan,
@@ -98,6 +100,7 @@ impl Index<usize> for FixedTimespanSet {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Tz {
     set: &'static FixedTimespanSet
 }

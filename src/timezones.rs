@@ -35,6 +35,22 @@ use crate::Tz;
 
 include!(concat!(env!("OUT_DIR"), "/timezones.rs"));
 
-pub fn get(name: &str) -> Option<Tz> {
-    TIMEZONES.get(name).map(|v| *v).map(|v| internal_tz_new(v))
+pub fn find_by_name(name: &str) -> Vec<Tz> {
+    if let Some(list) = WIN_TIMEZONES.get(name) {
+        list.iter().map(|v| internal_tz_new(v)).collect()
+    } else {
+        TIMEZONES.entries().filter(|(k, _)| k.contains(name)).map(|(_, v)| internal_tz_new(v)).collect()
+    }
+}
+
+pub fn iter() -> impl Iterator<Item = Tz> {
+    TIMEZONES.values().map(|v| internal_tz_new(v))
+}
+
+pub fn get_by_name(name: &str) -> Option<Tz> {
+    if let Some(list) = WIN_TIMEZONES.get(name) {
+        list.iter().nth(0).map(|v| internal_tz_new(v))
+    } else {
+        TIMEZONES.get(name).map(|v| internal_tz_new(v))
+    }
 }

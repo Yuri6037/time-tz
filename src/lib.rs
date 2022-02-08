@@ -58,11 +58,11 @@ impl OffsetDateTimeExt for OffsetDateTime {
 }
 
 mod timezone_impl;
-mod timezones;
+pub mod timezones;
 mod binary_search;
 
 pub use timezone_impl::Tz;
-pub use timezones::get as get_timezone_by_name;
+//pub use timezones::get as get_timezone_by_name;
 pub use timezones::root as timezone;
 
 #[cfg(test)]
@@ -71,6 +71,24 @@ mod tests {
     use crate::PrimitiveDateTimeExt;
     use crate::OffsetDateTimeExt;
     use crate::timezone;
+
+    #[test]
+    fn names() {
+        //This test verifies that windows timezone names work fine.
+        let shanghai = crate::timezones::get_by_name("Asia/Shanghai");
+        let china = crate::timezones::get_by_name("China Standard Time");
+        assert!(shanghai.is_some());
+        assert!(china.is_some());
+        assert_eq!(shanghai, china);
+    }
+
+    #[test]
+    fn find() {
+        let zones_iana = crate::timezones::find_by_name("Asia");
+        let zones_win = crate::timezones::find_by_name("China Standard Time");
+        assert!(zones_iana.len() > 1);
+        assert!(zones_win.len() > 1);
+    }
 
     #[test]
     fn london_to_berlin() {

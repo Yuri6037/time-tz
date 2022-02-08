@@ -35,8 +35,65 @@ use std::path::{Path, PathBuf};
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::TableTransitions;
+use serde::Deserialize;
+use serde_xml_rs::from_str;
 
 const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename = "mapZone")]
+struct MapZone {
+    other: String,
+    territory: String,
+    r#type: String
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct MapTimezones {
+    #[serde(rename = "$value")]
+    content: Vec<MapZone>
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct WindowsZones {
+    #[serde(rename = "mapTimezones")]
+    map_timezones: MapTimezones
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename = "supplementalData")]
+struct SupplementalData {
+    #[serde(rename = "windowsZones")]
+    windows_zones: WindowsZones
+}
+
+fn parse_win_cldr_db() -> phf_codegen::Map<String> {
+    let path = Path::new("win_cldr_data/windowsZones.xml");
+    let data = std::fs::read_to_string(path)
+        .expect("Failed to read windows CLDR database");
+    let data: SupplementalData = from_str(&data)
+        .expect("Failed to parse windows CLDR database");
+    let mut map = phf_codegen::Map::new();
+    for mapping in data.windows_zones.map_timezones.content {
+        let zone_name_statics = get_zone_name_static(&mapping.r#type);
+        let mut str = String::new();
+        let mut split = zone_name_statics.split(" ").peekable();
+        while let Some(item) = split.next() {
+            str.push('&');
+            str.push_str(item);
+            if split.peek().is_some() {
+                str.push_str(", ");
+            }
+        }
+        let zone_name_static = format!("&[{}]", str);
+        if mapping.territory == "001" {
+            map.entry(mapping.other, &zone_name_static);
+        } else {
+            map.entry(format!("{}/{}", mapping.other, mapping.territory), &zone_name_static);
+        }
+    }
+    map
+}
 
 //Linked-list kind of structure: needed to support recursive module generation.
 struct TimeZone<'a> {
@@ -96,6 +153,14 @@ fn intermal_write_module_tree(file: &mut BufWriter<File>, tree: &ModuleTree) -> 
     Ok(())
 }
 
+fn get_zone_name_static(zone: &str) -> String
+{
+    zone.replace("/", "__")
+        .replace("-", "_")
+        .replace("+", "plus")
+        .to_uppercase()
+}
+
 fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::io::Result<()>
 {
     let zones: BTreeSet<&String> = table.zonesets.keys().chain(table.links.keys()).collect();
@@ -103,10 +168,7 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
     let mut root = ModuleTree::new("root");
     for zone in zones {
         let timespans = table.timespans(zone).unwrap();
-        let zone_name_static = zone
-            .replace("/", "__")
-            .replace("-", "_")
-            .replace("+", "plus").to_uppercase();
+        let zone_name_static = get_zone_name_static(&zone);
         writeln!(file, "const {}: FixedTimespanSet = FixedTimespanSet {{", zone_name_static)?;
         writeln!(file, "    first: FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }},",
                  timespans.first.utc_offset,
@@ -125,6 +187,9 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
         map.entry(zone, &format!("&{}", zone_name_static));
         root.insert(zone, zone_name_static);
     }
+    let win_cldr_to_iana = parse_win_cldr_db();
+    writeln!(file, "static WIN_TIMEZONES: Map<&'static str, &'static [&'static FixedTimespanSet]> = {};",
+             win_cldr_to_iana.build())?;
     writeln!(file, "static TIMEZONES: Map<&'static str, &'static FixedTimespanSet> = {};", map.build())?;
     intermal_write_module_tree(file, &root)?;
     Ok(())
