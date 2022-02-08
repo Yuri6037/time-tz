@@ -28,8 +28,9 @@
 
 // Code inspired from https://github.com/chronotope/chrono-tz/blob/main/chrono-tz-build/src/lib.rs
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use parse_zoneinfo::line::{Line, LineParser};
@@ -38,10 +39,69 @@ use parse_zoneinfo::transitions::TableTransitions;
 
 const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
 
+//Linked-list kind of structure: needed to support recursive module generation.
+struct TimeZone<'a> {
+    pub name: &'a str,
+    pub name_static: String
+}
+
+struct ModuleTree<'a> {
+    pub name: &'a str,
+    pub items: Vec<TimeZone<'a>>,
+    pub sub_modules: HashMap<&'a str, ModuleTree<'a>>
+}
+
+impl<'a> ModuleTree<'a> {
+    pub fn new(name: &'a str) -> ModuleTree<'a> {
+        ModuleTree {
+            name,
+            items: Vec::new(),
+            sub_modules: HashMap::new()
+        }
+    }
+
+    fn insert_zone(&mut self, item: TimeZone<'a>) {
+        self.items.push(item);
+    }
+
+    pub fn insert(&mut self, zone_name: &'a str, zone_static: String) {
+        let mut path = zone_name.split("/").peekable();
+        let mut tree = self;
+        while let Some(module) = path.next() {
+            if path.peek().is_none() {
+                tree.insert_zone(TimeZone {
+                    name: module,
+                    name_static: zone_static
+                });
+                break;
+            } else {
+                tree = tree.sub_modules.entry(module).or_insert(ModuleTree::new(module));
+            }
+        }
+    }
+}
+
+fn intermal_write_module_tree(file: &mut BufWriter<File>, tree: &ModuleTree) -> std::io::Result<()>
+{
+    writeln!(file, "pub mod {} {{", tree.name.to_lowercase())?;
+    for zone in &tree.items {
+        writeln!(file, "pub static {}: crate::Tz = crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
+            .to_uppercase()
+            .replace("-", "_")
+            .replace("+", "_PLUS_"), zone.name_static)?;
+    }
+    for (_, subtree) in &tree.sub_modules {
+        intermal_write_module_tree(file, subtree)?;
+    }
+    writeln!(file, "}}")?;
+    Ok(())
+}
+
 fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::io::Result<()>
 {
     let zones: BTreeSet<&String> = table.zonesets.keys().chain(table.links.keys()).collect();
     let mut map = phf_codegen::Map::new();
+    let mut root = ModuleTree::new("root");
     for zone in zones {
         let timespans = table.timespans(zone).unwrap();
         let zone_name_static = zone
@@ -64,8 +124,10 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
         writeln!(file, "    ]")?;
         writeln!(file, "}};")?;
         map.entry(zone, &format!("&{}", zone_name_static));
+        root.insert(zone, zone_name_static);
     }
     writeln!(file, "static TIMEZONES: Map<&'static str, &'static FixedTimespanSet> = {};", map.build())?;
+    intermal_write_module_tree(file, &root)?;
     Ok(())
 }
 

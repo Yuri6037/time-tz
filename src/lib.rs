@@ -62,22 +62,21 @@ mod timezones;
 mod binary_search;
 
 pub use timezone_impl::Tz;
-pub use timezones::get;
+pub use timezones::get as get_timezone_by_name;
+pub use timezones::root as timezone;
 
 #[cfg(test)]
 mod tests {
-    use crate::get;
     use time::macros::datetime;
     use crate::PrimitiveDateTimeExt;
     use crate::OffsetDateTimeExt;
+    use crate::timezone;
 
     #[test]
     fn london_to_berlin() {
-        let london = get("Europe/London").unwrap();
-        let berlin = get("Europe/Berlin").unwrap();
-        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(&london);
-        let converted = dt.to_timezone(&berlin);
-        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(&berlin);
+        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(&timezone::europe::LONDON);
+        let converted = dt.to_timezone(&timezone::europe::BERLIN);
+        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(&timezone::europe::BERLIN);
         assert_eq!(converted, expected);
     }
 }

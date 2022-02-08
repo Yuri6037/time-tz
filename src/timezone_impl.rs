@@ -112,6 +112,6 @@ impl TimeZone for Tz {
     }
 }
 
-pub fn internal_tz_new(set: &'static FixedTimespanSet) -> Tz {
+pub const fn internal_tz_new(set: &'static FixedTimespanSet) -> Tz {
     Tz { set }
 }
