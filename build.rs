@@ -28,9 +28,8 @@
 
 // Code inspired from https://github.com/chronotope/chrono-tz/blob/main/chrono-tz-build/src/lib.rs
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::fs::File;
-use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use parse_zoneinfo::line::{Line, LineParser};
@@ -85,7 +84,7 @@ fn intermal_write_module_tree(file: &mut BufWriter<File>, tree: &ModuleTree) -> 
 {
     writeln!(file, "pub mod {} {{", tree.name.to_lowercase())?;
     for zone in &tree.items {
-        writeln!(file, "pub static {}: crate::Tz = crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
+        writeln!(file, "pub const {}: &crate::Tz = &crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
             .to_uppercase()
             .replace("-", "_")
             .replace("+", "_PLUS_"), zone.name_static)?;
@@ -108,7 +107,7 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
             .replace("/", "__")
             .replace("-", "_")
             .replace("+", "plus").to_uppercase();
-        writeln!(file, "static {}: FixedTimespanSet = FixedTimespanSet {{", zone_name_static)?;
+        writeln!(file, "const {}: FixedTimespanSet = FixedTimespanSet {{", zone_name_static)?;
         writeln!(file, "    first: FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }},",
                  timespans.first.utc_offset,
                  timespans.first.dst_offset,

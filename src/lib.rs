@@ -74,9 +74,9 @@ mod tests {
 
     #[test]
     fn london_to_berlin() {
-        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(&timezone::europe::LONDON);
-        let converted = dt.to_timezone(&timezone::europe::BERLIN);
-        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(&timezone::europe::BERLIN);
+        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(timezone::europe::LONDON);
+        let converted = dt.to_timezone(timezone::europe::BERLIN);
+        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezone::europe::BERLIN);
         assert_eq!(converted, expected);
     }
 }
