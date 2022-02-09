@@ -28,9 +28,17 @@
 
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 
+pub trait Offset
+{
+    fn to_utc(&self) -> UtcOffset;
+    fn name(&self) -> &str;
+}
+
 pub trait TimeZone
 {
-    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> UtcOffset;
+    type Offset: Offset;
+    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset;
+    fn name(&self) -> &str;
 }
 
 pub trait OffsetDateTimeExt
@@ -46,14 +54,14 @@ pub trait PrimitiveDateTimeExt
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
         let offset = tz.get_offset_utc(&self.assume_utc());
-        self.assume_offset(offset)
+        self.assume_offset(offset.to_utc())
     }
 }
 
 impl OffsetDateTimeExt for OffsetDateTime {
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
         let offset = tz.get_offset_utc(self);
-        self.to_offset(offset)
+        self.to_offset(offset.to_utc())
     }
 }
 
@@ -62,21 +70,22 @@ pub mod timezones;
 mod binary_search;
 
 pub use timezone_impl::Tz;
-//pub use timezones::get as get_timezone_by_name;
-pub use timezones::root as timezone;
 
 #[cfg(test)]
 mod tests {
     use time::macros::datetime;
+    use time::OffsetDateTime;
     use crate::PrimitiveDateTimeExt;
     use crate::OffsetDateTimeExt;
-    use crate::timezone;
+    use crate::timezones;
+    use crate::TimeZone;
+    use crate::Offset;
 
     #[test]
     fn names() {
         //This test verifies that windows timezone names work fine.
-        let shanghai = crate::timezones::get_by_name("Asia/Shanghai");
-        let china = crate::timezones::get_by_name("China Standard Time");
+        let shanghai = timezones::get_by_name("Asia/Shanghai");
+        let china = timezones::get_by_name("China Standard Time");
         assert!(shanghai.is_some());
         assert!(china.is_some());
         assert_eq!(shanghai, china);
@@ -84,17 +93,25 @@ mod tests {
 
     #[test]
     fn find() {
-        let zones_iana = crate::timezones::find_by_name("Asia");
-        let zones_win = crate::timezones::find_by_name("China Standard Time");
+        let zones_iana = timezones::find_by_name("Asia");
+        //let zones_win = timezones::find_by_name("China Standard Time");
         assert!(zones_iana.len() > 1);
-        assert!(zones_win.len() > 1);
+        //assert!(zones_win.len() > 1);
+    }
+
+    #[test]
+    fn offsets_and_name() {
+        let tz = timezones::root::europe::LONDON;
+        assert_eq!(tz.name(), "Europe/London");
+        let offset = tz.get_offset_utc(&OffsetDateTime::now_utc());
+        assert!(!offset.name().is_empty());
     }
 
     #[test]
     fn london_to_berlin() {
-        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(timezone::europe::LONDON);
-        let converted = dt.to_timezone(timezone::europe::BERLIN);
-        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezone::europe::BERLIN);
+        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(timezones::root::europe::LONDON);
+        let converted = dt.to_timezone(timezones::root::europe::BERLIN);
+        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezones::root::europe::BERLIN);
         assert_eq!(converted, expected);
     }
 }

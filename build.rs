@@ -170,6 +170,7 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
         let timespans = table.timespans(zone).unwrap();
         let zone_name_static = get_zone_name_static(&zone);
         writeln!(file, "const {}: FixedTimespanSet = FixedTimespanSet {{", zone_name_static)?;
+        writeln!(file, "    name: \"{}\",", zone)?;
         writeln!(file, "    first: FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }},",
                  timespans.first.utc_offset,
                  timespans.first.dst_offset,

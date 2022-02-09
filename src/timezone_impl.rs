@@ -30,7 +30,7 @@ use std::cmp::Ordering;
 use std::ops::Index;
 use crate::binary_search::binary_search;
 use time::{OffsetDateTime, UtcOffset};
-use crate::TimeZone;
+use crate::{Offset, TimeZone};
 
 //Inspired from https://github.com/chronotope/chrono-tz/blob/main/src/timezone_impl.rs
 
@@ -64,6 +64,7 @@ pub struct FixedTimespan {
 #[derive(Debug, PartialEq, Eq)]
 pub struct FixedTimespanSet
 {
+    pub name: &'static str,
     pub first: FixedTimespan,
     pub others: &'static [(i64, FixedTimespan)]
 }
@@ -101,17 +102,40 @@ impl Index<usize> for FixedTimespanSet {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct TzOffset
+{
+    timespan: &'static FixedTimespan
+}
+
+impl Offset for TzOffset {
+    fn to_utc(&self) -> UtcOffset {
+        UtcOffset::from_whole_seconds(self.timespan.utc_offset as i32).unwrap()
+    }
+
+    fn name(&self) -> &str {
+        self.timespan.name
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct Tz {
     set: &'static FixedTimespanSet
 }
 
 impl TimeZone for Tz {
-    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> UtcOffset {
+    type Offset = TzOffset;
+
+    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> TzOffset {
         let timestamp = date_time.unix_timestamp();
         let index = binary_search(0, self.set.len(),
                                   |i| self.set.span_utc(i).cmp(timestamp)).unwrap();
-        let secs = &self.set[index].utc_offset;
-        UtcOffset::from_whole_seconds(*secs as i32).unwrap()
+        TzOffset {
+            timespan: &self.set[index]
+        }
+    }
+
+    fn name(&self) -> &str {
+        self.set.name
     }
 }
 
