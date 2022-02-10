@@ -15,6 +15,7 @@ categories = ["date-and-time"]
 [dependencies]
 phf = "0.10.1"
 time = { version = "0.3.7", features = ["macros"] }
+cfg-if = "1.0.0"
 
 [build-dependencies]
 parse-zoneinfo = { version = "0.3" }
