@@ -26,7 +26,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
 use crate::timezones::get_by_name;
 use crate::Tz;
 
@@ -63,25 +62,29 @@ pub fn get_timezone() -> Result<Tz, Error> {
                 return Err(Error::Undetermined);
             }
         } else {
-            use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
-            use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
-            let mut data;
-            let res = GetDynamicTimeZoneInformation(&mut data as _);
-            if res == 0 {
-                return Err(Error::Undetermined);
-            } else if res != 1 && res != 2 {
-                return Err(Error::Os);
-            } else {
-                let win_name_utf16 = &data.TimeZoneKeyName;
-                let mut len: usize = 0;
-                while win_name_utf16[len] != 0x0 {
-                    len += 1;
+			unsafe {
+                use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
+                use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
+                let mut data: DYNAMIC_TIME_ZONE_INFORMATION = std::mem::zeroed();
+                let res = GetDynamicTimeZoneInformation(&mut data as _);
+                if res == 0 {
+                    return Err(Error::Undetermined);
+                } else if res != 1 && res != 2 {
+                    return Err(Error::Os);
+                } else {
+                    let win_name_utf16 = &data.TimeZoneKeyName;
+                    let mut len: usize = 0;
+                    while win_name_utf16[len] != 0x0 {
+                        len += 1;
+                    }
+					if len == 0 {
+						return Err(Error::Undetermined);
+					}
+                    let win_tz = String::from_utf16(&win_name_utf16[..len]).map_err(|_| Error::Unicode)?;
+					let tz = get_by_name(&win_tz).ok_or(Error::Unknown)?;
+                    return Ok(tz);
                 }
-                let slice = std::slice::from_raw_parts(win_name_utf16, len);
-                let win_tz = String::from_utf16(slice).map_err(|_| Error::Unicode)?;
-                let tz = get_by_name(win_tz).ok_or(Error::Unknown)?;
-                return Ok(tz);
-            }
+			}
         }
     }
 }
