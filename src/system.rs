@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
 use crate::timezones::get_by_name;
 use crate::Tz;
 
@@ -37,8 +38,12 @@ pub enum Error
     /// An OS level error has occurred (can only happen on Windows).
     Os,
 
-    /// The timezone is undetermined (means the timezone is not defined).
+    /// The timezone is undetermined (means the timezone is not defined or that the system
+    /// itself doesn't know the its timezone).
     Undetermined,
+
+    /// Somehow the read timezone name contains non unicode...
+    Unicode,
 
     /// The timezone doesn't exist in the crate's database.
     Unknown
@@ -51,14 +56,32 @@ pub fn get_timezone() -> Result<Tz, Error> {
             let path = Path::new("/etc/localtime");
             let realpath = std::fs::read_link(path).map_err(|v| Error::Io(v))?;
             // The part of the path we're interested in cannot contain non unicode characters.
-            if let Some(iana) = realpath.to_string_lossy().split("/zoneinfo/").last() {
+            if let Some(iana) = realpath.to_str().ok_or(Error::Unicode)?.split("/zoneinfo/").last() {
                 let tz = get_by_name(iana).ok_or(Error::Unknown)?;
                 return Ok(tz);
             } else {
                 return Err(Error::Undetermined);
             }
         } else {
-            todo!()
+            use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
+            use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
+            let mut data;
+            let res = GetDynamicTimeZoneInformation(&mut data as _);
+            if res == 0 {
+                return Err(Error::Undetermined);
+            } else if res != 1 && res != 2 {
+                return Err(Error::Os);
+            } else {
+                let win_name_utf16 = &data.TimeZoneKeyName;
+                let mut len: usize = 0;
+                while win_name_utf16[len] != 0x0 {
+                    len += 1;
+                }
+                let slice = std::slice::from_raw_parts(win_name_utf16, len);
+                let win_tz = String::from_utf16(slice).map_err(|_| Error::Unicode)?;
+                let tz = get_by_name(win_tz).ok_or(Error::Unknown)?;
+                return Ok(tz);
+            }
         }
     }
 }
