@@ -68,6 +68,8 @@ impl OffsetDateTimeExt for OffsetDateTime {
 mod timezone_impl;
 pub mod timezones;
 mod binary_search;
+
+#[cfg(feature = "system")]
 pub mod system;
 
 pub use timezone_impl::Tz;

@@ -25,3 +25,6 @@ parse-zoneinfo = { version = "0.3" }
 phf_codegen = "0.10.0"
 serde-xml-rs = "0.5.1"
 serde = { version = "1.0.136", features = ["derive"] }
+
+[features]
+system = []
