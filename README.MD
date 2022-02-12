@@ -11,13 +11,15 @@ of chrono. This is designed to replace use of chono dependency which is impacted
 
 - Injects an `assume_timezone` member function to any `PrimitiveDateTime`.
 - Injects a `to_timezone` member function to any `OffsetDateTime`.
-- Provides a `get` function to get a timezone by name.
+- Provides a `timezones::get_by_name` function to get a timezone by name.
+- Supports finding the closest IANA match from a windows timezone name.
+- Supports obtaining system's current timezone (through the `system` feature).
 
 ## Usage
 
 ```rust
 use time::macros::datetime;
-use time_tz::{get, PrimitiveDateTimeExt, OffsetDateTimeExt};
+use time_tz::{PrimitiveDateTimeExt, OffsetDateTimeExt, timezones};
 
 fn main()
 {
@@ -26,22 +28,22 @@ fn main()
     // ===========================================
     
     // First we have to get the source timezone:
-    let london = get("Europe/London").unwrap();
+    let london = timezones::db::europe::LONDON;
     // The function returns None if the timezone doesn't exist.
 
     // Now we can create a primitive date time and call the extension function:
-    let dt = datetime!(2016-10-8 17:0:0).assume_timezone(&london);
+    let dt = datetime!(2016-10-8 17:0:0).assume_timezone(london);
 
-    
+
     // ===========================
     //  Convert to a new timezone
     // ===========================
 
     // First we get the target timezone:
-    let berlin = get("Europe/Berlin").unwrap();
+    let berlin = timezones::db::europe::BERLIN;
 
     // Now we can convert (again by calling an extension function):
-    let converted = dt.to_timezone(&berlin);
+    let converted = dt.to_timezone(berlin);
 
     // ... do something with converted
 }
