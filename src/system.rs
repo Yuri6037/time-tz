@@ -62,7 +62,7 @@ impl Display for Error {
     }
 }
 
-pub fn get_timezone() -> Result<Tz, Error> {
+pub fn get_timezone() -> Result<&'static Tz, Error> {
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
             use std::path::Path;
