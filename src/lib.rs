@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn offsets_and_name() {
-        let tz = timezones::root::europe::LONDON;
+        let tz = timezones::db::europe::LONDON;
         assert_eq!(tz.name(), "Europe/London");
         let offset = tz.get_offset_utc(&OffsetDateTime::now_utc());
         assert!(!offset.name().is_empty());
@@ -110,9 +110,9 @@ mod tests {
 
     #[test]
     fn london_to_berlin() {
-        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(timezones::root::europe::LONDON);
-        let converted = dt.to_timezone(timezones::root::europe::BERLIN);
-        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezones::root::europe::BERLIN);
+        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(timezones::db::europe::LONDON);
+        let converted = dt.to_timezone(timezones::db::europe::BERLIN);
+        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezones::db::europe::BERLIN);
         assert_eq!(converted, expected);
     }
 }

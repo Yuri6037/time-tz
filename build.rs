@@ -165,7 +165,7 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
 {
     let zones: BTreeSet<&String> = table.zonesets.keys().chain(table.links.keys()).collect();
     let mut map = phf_codegen::Map::new();
-    let mut root = ModuleTree::new("root");
+    let mut root = ModuleTree::new("db");
     for zone in zones {
         let timespans = table.timespans(zone).unwrap();
         let zone_name_static = get_zone_name_static(&zone);
