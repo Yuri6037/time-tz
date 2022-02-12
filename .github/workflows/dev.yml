@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive # garbage peace of shit mother fucking github downloading broken repositories!!!!!
+          # GitLab is far better because it is not downloading broken repositories.
       - name: Install cargo-audit
         run: cargo install cargo-audit
       - name: Run audit
@@ -17,6 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive # garbage peace of shit mother fucking github downloading broken repositories!!!!!
+          # GitLab is far better because it is not downloading broken repositories.
       - name: Install clippy
         run: rustup component add clippy
       - name: Run clippy
@@ -25,5 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive # garbage peace of shit mother fucking github downloading broken repositories!!!!!
+          # GitLab is far better because it is not downloading broken repositories.
       - name: Build and test
         run: cargo test --all-features
