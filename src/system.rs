@@ -26,9 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::{Display, Formatter};
 use crate::timezones::get_by_name;
 use crate::Tz;
 
+#[derive(Debug)]
 pub enum Error
 {
     /// An IO error has occurred.
@@ -46,6 +48,18 @@ pub enum Error
 
     /// The timezone doesn't exist in the crate's database.
     Unknown
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Io(e) => write!(f, "io error: {}", e),
+            Error::Os => f.write_str("low-level os error"),
+            Error::Undetermined => f.write_str("undefined timezone"),
+            Error::Unicode => f.write_str("timezone name is not unicode"),
+            Error::Unknown => f.write_str("unknown timezone name")
+        }
+    }
 }
 
 pub fn get_timezone() -> Result<Tz, Error> {
