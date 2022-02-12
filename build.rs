@@ -79,10 +79,11 @@ fn parse_win_cldr_db() -> phf_codegen::Map<String> {
         let mut str = String::new();
         let mut split = zone_name_statics.split(" ").peekable();
         while let Some(item) = split.next() {
-            str.push('&');
-            str.push_str(item);
+            str += "&internal_tz_new(&";
+            str += item;
+            str.push(')');
             if split.peek().is_some() {
-                str.push_str(", ");
+                str += ", ";
             }
         }
         let zone_name_static = format!("&[{}]", str);
@@ -185,13 +186,13 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
         }
         writeln!(file, "    ]")?;
         writeln!(file, "}};")?;
-        map.entry(zone, &format!("&{}", zone_name_static));
+        map.entry(zone, &format!("&internal_tz_new(&{})", zone_name_static));
         root.insert(zone, zone_name_static);
     }
     let win_cldr_to_iana = parse_win_cldr_db();
-    writeln!(file, "static WIN_TIMEZONES: Map<&'static str, &'static [&'static FixedTimespanSet]> = {};",
+    writeln!(file, "static WIN_TIMEZONES: Map<&'static str, &'static [&'static Tz]> = {};",
              win_cldr_to_iana.build())?;
-    writeln!(file, "static TIMEZONES: Map<&'static str, &'static FixedTimespanSet> = {};", map.build())?;
+    writeln!(file, "static TIMEZONES: Map<&'static str, &'static Tz> = {};", map.build())?;
     intermal_write_module_tree(file, &root)?;
     Ok(())
 }
