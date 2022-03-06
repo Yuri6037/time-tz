@@ -26,17 +26,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::binary_search::binary_search;
+use crate::{Offset, TimeZone};
 use std::cmp::Ordering;
 use std::ops::Index;
-use crate::binary_search::binary_search;
 use time::{OffsetDateTime, UtcOffset};
-use crate::{Offset, TimeZone};
 
 //Inspired from https://github.com/chronotope/chrono-tz/blob/main/src/timezone_impl.rs
 
 struct Span {
     start: Option<i64>,
-    end: Option<i64>
+    end: Option<i64>,
 }
 
 impl Span {
@@ -62,11 +62,10 @@ pub struct FixedTimespan {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct FixedTimespanSet
-{
+pub struct FixedTimespanSet {
     pub name: &'static str,
     pub first: FixedTimespan,
-    pub others: &'static [(i64, FixedTimespan)]
+    pub others: &'static [(i64, FixedTimespan)],
 }
 
 impl FixedTimespanSet {
@@ -77,7 +76,7 @@ impl FixedTimespanSet {
     fn span_utc(&self, i: usize) -> Span {
         let start = match i {
             0 => None,
-            _ => Some(self.others[i - 1].0)
+            _ => Some(self.others[i - 1].0),
         };
         let end;
         if i >= self.others.len() {
@@ -96,15 +95,14 @@ impl Index<usize> for FixedTimespanSet {
         debug_assert!(index < self.len());
         match index {
             0 => &self.first,
-            _ => &self.others[index - 1].1
+            _ => &self.others[index - 1].1,
         }
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TzOffset
-{
-    timespan: &'static FixedTimespan
+pub struct TzOffset {
+    timespan: &'static FixedTimespan,
 }
 
 impl Offset for TzOffset {
@@ -119,7 +117,7 @@ impl Offset for TzOffset {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tz {
-    set: &'static FixedTimespanSet
+    set: &'static FixedTimespanSet,
 }
 
 impl TimeZone for Tz {
@@ -127,10 +125,10 @@ impl TimeZone for Tz {
 
     fn get_offset_utc(&self, date_time: &OffsetDateTime) -> TzOffset {
         let timestamp = date_time.unix_timestamp();
-        let index = binary_search(0, self.set.len(),
-                                  |i| self.set.span_utc(i).cmp(timestamp)).unwrap();
+        let index =
+            binary_search(0, self.set.len(), |i| self.set.span_utc(i).cmp(timestamp)).unwrap();
         TzOffset {
-            timespan: &self.set[index]
+            timespan: &self.set[index],
         }
     }
 

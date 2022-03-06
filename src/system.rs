@@ -26,13 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::{Display, Formatter};
 use crate::timezones::get_by_name;
 use crate::Tz;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
-pub enum Error
-{
+pub enum Error {
     /// An IO error has occurred.
     Io(std::io::Error),
 
@@ -47,11 +46,10 @@ pub enum Error
     Unicode,
 
     /// The timezone doesn't exist in the crate's database.
-    Unknown
+    Unknown,
 }
 
-impl std::error::Error for Error {
-}
+impl std::error::Error for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -60,7 +58,7 @@ impl Display for Error {
             Error::Os => f.write_str("low-level os error"),
             Error::Undetermined => f.write_str("undefined timezone"),
             Error::Unicode => f.write_str("timezone name is not unicode"),
-            Error::Unknown => f.write_str("unknown timezone name")
+            Error::Unknown => f.write_str("unknown timezone name"),
         }
     }
 }
@@ -79,7 +77,7 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                 return Err(Error::Undetermined);
             }
         } else {
-			unsafe {
+            unsafe {
                 use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
                 use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
                 let mut data: DYNAMIC_TIME_ZONE_INFORMATION = std::mem::zeroed();
@@ -94,14 +92,14 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                     while win_name_utf16[len] != 0x0 {
                         len += 1;
                     }
-					if len == 0 {
-						return Err(Error::Undetermined);
-					}
+                    if len == 0 {
+                        return Err(Error::Undetermined);
+                    }
                     let win_tz = String::from_utf16(&win_name_utf16[..len]).map_err(|_| Error::Unicode)?;
-					let tz = get_by_name(&win_tz).ok_or(Error::Unknown)?;
+                    let tz = get_by_name(&win_tz).ok_or(Error::Unknown)?;
                     return Ok(tz);
                 }
-			}
+            }
         }
     }
 }

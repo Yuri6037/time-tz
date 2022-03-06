@@ -28,8 +28,7 @@
 
 use std::cmp::Ordering;
 
-pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F) -> Option<usize>
-{
+pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F) -> Option<usize> {
     if start >= end {
         return None;
     }
@@ -38,7 +37,7 @@ pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F)
     match cmp(mid) {
         Ordering::Greater => binary_search(start, mid, cmp),
         Ordering::Equal => Some(mid),
-        Ordering::Less => binary_search(mid + 1, end, cmp)
+        Ordering::Less => binary_search(mid + 1, end, cmp),
     }
 }
 
@@ -50,7 +49,11 @@ fn test_binary_search() {
     assert_eq!(binary_search(30, 50, |x| x.cmp(&42)), Some(42));
     assert_eq!(binary_search(300, 500, |x| x.cmp(&42)), None);
     assert_eq!(
-        binary_search(0, 500, |x| if x < 42 { Ordering::Less } else { Ordering::Greater }),
+        binary_search(0, 500, |x| if x < 42 {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }),
         None
     );
 }
