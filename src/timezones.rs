@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::timezone_impl::internal_tz_new;
 use crate::timezone_impl::FixedTimespan;
 use crate::timezone_impl::FixedTimespanSet;
-use crate::timezone_impl::internal_tz_new;
 
-use phf::Map;
 use crate::Tz;
+use phf::Map;
 
 include!(concat!(env!("OUT_DIR"), "/timezones.rs"));
 
@@ -39,7 +39,11 @@ pub fn find_by_name(name: &str) -> Vec<&'static Tz> {
     if let Some(list) = WIN_TIMEZONES.get(name) {
         list.iter().map(|v| *v).collect()
     } else {
-        TIMEZONES.entries().filter(|(k, _)| k.contains(name)).map(|(_, v)| *v).collect()
+        TIMEZONES
+            .entries()
+            .filter(|(k, _)| k.contains(name))
+            .map(|(_, v)| *v)
+            .collect()
     }
 }
 

@@ -28,15 +28,15 @@
 
 // Code inspired from https://github.com/chronotope/chrono-tz/blob/main/chrono-tz-build/src/lib.rs
 
-use std::collections::{BTreeSet, HashMap};
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::path::{Path, PathBuf};
 use parse_zoneinfo::line::{Line, LineParser};
 use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::TableTransitions;
 use serde::Deserialize;
 use serde_xml_rs::from_str;
+use std::collections::{BTreeSet, HashMap};
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
 
 const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
 
@@ -45,34 +45,32 @@ const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
 struct MapZone {
     other: String,
     territory: String,
-    r#type: String
+    r#type: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct MapTimezones {
     #[serde(rename = "$value")]
-    content: Vec<MapZone>
+    content: Vec<MapZone>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct WindowsZones {
     #[serde(rename = "mapTimezones")]
-    map_timezones: MapTimezones
+    map_timezones: MapTimezones,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename = "supplementalData")]
 struct SupplementalData {
     #[serde(rename = "windowsZones")]
-    windows_zones: WindowsZones
+    windows_zones: WindowsZones,
 }
 
 fn parse_win_cldr_db() -> phf_codegen::Map<String> {
     let path = Path::new("win_cldr_data/windowsZones.xml");
-    let data = std::fs::read_to_string(path)
-        .expect("Failed to read windows CLDR database");
-    let data: SupplementalData = from_str(&data)
-        .expect("Failed to parse windows CLDR database");
+    let data = std::fs::read_to_string(path).expect("Failed to read windows CLDR database");
+    let data: SupplementalData = from_str(&data).expect("Failed to parse windows CLDR database");
     let mut map = phf_codegen::Map::new();
     for mapping in data.windows_zones.map_timezones.content {
         let zone_name_statics = get_zone_name_static(&mapping.r#type);
@@ -90,7 +88,10 @@ fn parse_win_cldr_db() -> phf_codegen::Map<String> {
         if mapping.territory == "001" {
             map.entry(mapping.other, &zone_name_static);
         } else {
-            map.entry(format!("{}/{}", mapping.other, mapping.territory), &zone_name_static);
+            map.entry(
+                format!("{}/{}", mapping.other, mapping.territory),
+                &zone_name_static,
+            );
         }
     }
     map
@@ -99,13 +100,13 @@ fn parse_win_cldr_db() -> phf_codegen::Map<String> {
 //Linked-list kind of structure: needed to support recursive module generation.
 struct TimeZone<'a> {
     pub name: &'a str,
-    pub name_static: String
+    pub name_static: String,
 }
 
 struct ModuleTree<'a> {
     pub name: &'a str,
     pub items: Vec<TimeZone<'a>>,
-    pub sub_modules: HashMap<&'a str, ModuleTree<'a>>
+    pub sub_modules: HashMap<&'a str, ModuleTree<'a>>,
 }
 
 impl<'a> ModuleTree<'a> {
@@ -113,7 +114,7 @@ impl<'a> ModuleTree<'a> {
         ModuleTree {
             name,
             items: Vec::new(),
-            sub_modules: HashMap::new()
+            sub_modules: HashMap::new(),
         }
     }
 
@@ -128,18 +129,23 @@ impl<'a> ModuleTree<'a> {
             if path.peek().is_none() {
                 tree.insert_zone(TimeZone {
                     name: module,
-                    name_static: zone_static
+                    name_static: zone_static,
                 });
                 break;
             } else {
-                tree = tree.sub_modules.entry(module).or_insert(ModuleTree::new(module));
+                tree = tree
+                    .sub_modules
+                    .entry(module)
+                    .or_insert(ModuleTree::new(module));
             }
         }
     }
 }
 
-fn intermal_write_module_tree(file: &mut BufWriter<File>, tree: &ModuleTree) -> std::io::Result<()>
-{
+fn intermal_write_module_tree(
+    file: &mut BufWriter<File>,
+    tree: &ModuleTree,
+) -> std::io::Result<()> {
     writeln!(file, "pub mod {} {{", tree.name.to_lowercase())?;
     for zone in &tree.items {
         writeln!(file, "pub const {}: &crate::Tz = &crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
@@ -154,35 +160,38 @@ fn intermal_write_module_tree(file: &mut BufWriter<File>, tree: &ModuleTree) -> 
     Ok(())
 }
 
-fn get_zone_name_static(zone: &str) -> String
-{
+fn get_zone_name_static(zone: &str) -> String {
     zone.replace("/", "__")
         .replace("-", "_")
         .replace("+", "plus")
         .to_uppercase()
 }
 
-fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::io::Result<()>
-{
+fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::io::Result<()> {
     let zones: BTreeSet<&String> = table.zonesets.keys().chain(table.links.keys()).collect();
     let mut map = phf_codegen::Map::new();
     let mut root = ModuleTree::new("db");
     for zone in zones {
         let timespans = table.timespans(zone).unwrap();
         let zone_name_static = get_zone_name_static(&zone);
-        writeln!(file, "const {}: FixedTimespanSet = FixedTimespanSet {{", zone_name_static)?;
+        writeln!(
+            file,
+            "const {}: FixedTimespanSet = FixedTimespanSet {{",
+            zone_name_static
+        )?;
         writeln!(file, "    name: \"{}\",", zone)?;
-        writeln!(file, "    first: FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }},",
-                 timespans.first.utc_offset,
-                 timespans.first.dst_offset,
-                 timespans.first.name)?;
+        writeln!(
+            file,
+            "    first: FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }},",
+            timespans.first.utc_offset, timespans.first.dst_offset, timespans.first.name
+        )?;
         writeln!(file, "    others: &[")?;
         for (start, span) in timespans.rest {
-            writeln!(file, "        ({}, FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }}),",
-                     start,
-                     span.utc_offset,
-                     span.dst_offset,
-                     span.name)?;
+            writeln!(
+                file,
+                "        ({}, FixedTimespan {{ utc_offset: {}, dst_offset: {}, name: \"{}\" }}),",
+                start, span.utc_offset, span.dst_offset, span.name
+            )?;
         }
         writeln!(file, "    ]")?;
         writeln!(file, "}};")?;
@@ -190,21 +199,26 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
         root.insert(zone, zone_name_static);
     }
     let win_cldr_to_iana = parse_win_cldr_db();
-    writeln!(file, "static WIN_TIMEZONES: Map<&'static str, &'static [&'static Tz]> = {};",
-             win_cldr_to_iana.build())?;
-    writeln!(file, "static TIMEZONES: Map<&'static str, &'static Tz> = {};", map.build())?;
+    writeln!(
+        file,
+        "static WIN_TIMEZONES: Map<&'static str, &'static [&'static Tz]> = {};",
+        win_cldr_to_iana.build()
+    )?;
+    writeln!(
+        file,
+        "static TIMEZONES: Map<&'static str, &'static Tz> = {};",
+        map.build()
+    )?;
     intermal_write_module_tree(file, &root)?;
     Ok(())
 }
 
-fn write_timezones_file(table: &Table)
-{
+fn write_timezones_file(table: &Table) {
     let path = std::env::var_os("OUT_DIR")
         .map(PathBuf::from)
         .expect("Couldn't obtain cargo OUT_DIR")
         .join("timezones.rs");
-    let file = File::create(path)
-        .expect("Couldn't create timezones file");
+    let file = File::create(path).expect("Couldn't create timezones file");
     let mut writer = BufWriter::new(file);
     internal_write_timezones(&mut writer, table).expect("Couldn't write timezones file");
 }
@@ -222,13 +236,16 @@ fn main() {
         "tz/southamerica",
     ];
 
-    let lines = tzfiles.iter().map(Path::new)
+    let lines = tzfiles
+        .iter()
+        .map(Path::new)
         .map(File::open)
         .map(|v| v.expect("Failed to open one ore more tz databse file(s)"))
         .map(BufReader::new)
         .flat_map(|v| v.lines())
         .map(|v| v.expect("Filed to read one ore more tz databse file(s)"))
-        .filter_map(|mut v| { //Pre-filter to get rid of comment-only lines as there are a lot.
+        .filter_map(|mut v| {
+            //Pre-filter to get rid of comment-only lines as there are a lot.
             if let Some(i) = v.find('#') {
                 v.truncate(i);
             }
@@ -242,11 +259,11 @@ fn main() {
     let parser = LineParser::new();
     for line in lines {
         match parser.parse_str(&line).expect(PARSE_FAILURE) {
-            Line::Space => {},
+            Line::Space => {}
             Line::Zone(v) => builder.add_zone_line(v).expect(PARSE_FAILURE),
             Line::Continuation(v) => builder.add_continuation_line(v).expect(PARSE_FAILURE),
             Line::Rule(v) => builder.add_rule_line(v).expect(PARSE_FAILURE),
-            Line::Link(v) => builder.add_link_line(v).expect(PARSE_FAILURE)
+            Line::Link(v) => builder.add_link_line(v).expect(PARSE_FAILURE),
         }
     }
     let table = builder.build();

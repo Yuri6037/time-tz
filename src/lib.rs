@@ -28,26 +28,22 @@
 
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 
-pub trait Offset
-{
+pub trait Offset {
     fn to_utc(&self) -> UtcOffset;
     fn name(&self) -> &str;
 }
 
-pub trait TimeZone
-{
+pub trait TimeZone {
     type Offset: Offset;
     fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset;
     fn name(&self) -> &str;
 }
 
-pub trait OffsetDateTimeExt
-{
+pub trait OffsetDateTimeExt {
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 }
 
-pub trait PrimitiveDateTimeExt
-{
+pub trait PrimitiveDateTimeExt {
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 }
 
@@ -65,9 +61,9 @@ impl OffsetDateTimeExt for OffsetDateTime {
     }
 }
 
+mod binary_search;
 mod timezone_impl;
 pub mod timezones;
-mod binary_search;
 
 #[cfg(feature = "system")]
 pub mod system;
@@ -76,13 +72,13 @@ pub use timezone_impl::Tz;
 
 #[cfg(test)]
 mod tests {
+    use crate::timezones;
+    use crate::Offset;
+    use crate::OffsetDateTimeExt;
+    use crate::PrimitiveDateTimeExt;
+    use crate::TimeZone;
     use time::macros::datetime;
     use time::OffsetDateTime;
-    use crate::PrimitiveDateTimeExt;
-    use crate::OffsetDateTimeExt;
-    use crate::timezones;
-    use crate::TimeZone;
-    use crate::Offset;
 
     #[test]
     fn names() {
