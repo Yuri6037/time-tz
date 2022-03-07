@@ -150,8 +150,8 @@ fn intermal_write_module_tree(
     for zone in &tree.items {
         writeln!(file, "pub const {}: &crate::Tz = &crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
             .to_uppercase()
-            .replace("-", "_")
-            .replace("+", "_PLUS_"), zone.name_static)?;
+            .replace('-', "_")
+            .replace('+', "_PLUS_"), zone.name_static)?;
     }
     for subtree in tree.sub_modules.values() {
         intermal_write_module_tree(file, subtree)?;
@@ -161,9 +161,9 @@ fn intermal_write_module_tree(
 }
 
 fn get_zone_name_static(zone: &str) -> String {
-    zone.replace("/", "__")
-        .replace("-", "_")
-        .replace("+", "plus")
+    zone.replace('/', "__")
+        .replace('-', "_")
+        .replace('+', "plus")
         .to_uppercase()
 }
 
