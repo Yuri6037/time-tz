@@ -17,6 +17,9 @@ phf = "0.10.1"
 time = { version = "0.3.7", features = ["macros"] }
 cfg-if = "1.0.0"
 
+#TODO: Put behind crate feature once finished
+nom = "7.1.0"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.32.0", features = ["Win32_System_Time", "Win32_Foundation"] }
 
