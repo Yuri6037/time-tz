@@ -68,13 +68,13 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
         if #[cfg(unix)] {
             use std::path::Path;
             let path = Path::new("/etc/localtime");
-            let realpath = std::fs::read_link(path).map_err(|v| Error::Io(v))?;
+            let realpath = std::fs::read_link(path).map_err(Error::Io)?;
             // The part of the path we're interested in cannot contain non unicode characters.
             if let Some(iana) = realpath.to_str().ok_or(Error::Unicode)?.split("/zoneinfo/").last() {
                 let tz = get_by_name(iana).ok_or(Error::Unknown)?;
-                return Ok(tz);
+                Ok(tz)
             } else {
-                return Err(Error::Undetermined);
+                Err(Error::Undetermined)
             }
         } else {
             unsafe {
@@ -97,7 +97,7 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                     }
                     let win_tz = String::from_utf16(&win_name_utf16[..len]).map_err(|_| Error::Unicode)?;
                     let tz = get_by_name(&win_tz).ok_or(Error::Unknown)?;
-                    return Ok(tz);
+                    Ok(tz)
                 }
             }
         }
