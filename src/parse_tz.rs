@@ -27,11 +27,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use nom::branch::alt;
-use nom::bytes::complete::{is_not, take, take_while_m_n};
+use nom::bytes::complete::{is_not, take_while_m_n};
 use nom::character::complete::{char as cchar, digit1};
 use nom::combinator::{map_res, opt};
-use nom::IResult;
+use nom::error::ErrorKind;
+use nom::{Err, IResult};
 use nom::sequence::{delimited, tuple};
+use time::{OffsetDateTime, UtcOffset};
+use crate::TimeZone;
 
 const TZNAME_MAX: usize = 16;
 
@@ -42,10 +45,31 @@ struct Time {
     ss: Option<u8>
 }
 
+impl Time {
+    fn to_seconds(&self) -> u32 {
+        self.hh as u32 * 3600
+            + self.mm.unwrap_or(0) as u32 * 60
+            + self.ss.unwrap_or(0) as u32
+    }
+
+    fn is_valid_range(&self) -> bool {
+        self.hh <= 24 && self.mm.unwrap_or(0) <= 59 && self.ss.unwrap_or(0) <= 59
+    }
+}
+
 #[derive(Eq, PartialEq, Debug)]
 struct Offset {
     positive: bool,
     time: Time
+}
+
+impl Offset {
+    fn to_seconds(&self) -> i32 {
+        match self.positive {
+            true => self.time.to_seconds() as i32,
+            false => -(self.time.to_seconds() as i32)
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -56,6 +80,17 @@ enum Date {
         m: u8,
         n: u8,
         d: u8
+    }
+}
+
+impl Date {
+    fn is_valid_range(&self) -> bool {
+        match self {
+            Date::J(v) => v >= &1 && v <= &365,
+            Date::N(v) => v <= &365,
+            Date::M { m, n, d } => d <= &6 && n >= &1 && n <= &5 && m >= &1
+                && m <= &12
+        }
     }
 }
 
@@ -85,6 +120,50 @@ enum Tz<'a> {
         std: Std<'a>,
         dst: Option<Dst<'a>>
     }
+}
+
+impl<'a> Tz<'a> {
+    fn ensure_valid_range(&self) -> Result<(), RangeError> {
+        if let Tz::Expanded { std, dst } = self {
+            if !std.offset.time.is_valid_range() {
+                return Err(RangeError::Time);
+            }
+            if let Some(dst) = dst {
+                if let Some(offset) = &dst.offset {
+                    if !offset.time.is_valid_range() {
+                        return Err(RangeError::Time);
+                    }
+                }
+                if let Some(rule) = &dst.rule {
+                    if !rule.start.0.is_valid_range() || !rule.end.0.is_valid_range() {
+                        return Err(RangeError::Date);
+                    }
+                    if let Some(time) = &rule.start.1 {
+                        if !time.is_valid_range() {
+                            return Err(RangeError::Time);
+                        }
+                    }
+                    if let Some(time) = &rule.end.1 {
+                        if !time.is_valid_range() {
+                            return Err(RangeError::Time);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+pub enum RangeError {
+    Time,
+    Date
+}
+
+pub enum Error<'a> {
+    Nom(ErrorKind),
+    UnknownName(&'a str),
+    Range(RangeError)
 }
 
 fn quoted_name(input: &str) -> IResult<&str, &str> {
@@ -216,9 +295,92 @@ fn entry(input: &str) -> IResult<&str, Tz> {
     alt((tz_short, tz_expanded))(input)
 }
 
+pub enum ParsedTzOffset<'a> {
+    Existing(crate::timezone_impl::TzOffset),
+    Expanded((&'a str, time::UtcOffset))
+}
+
+impl<'a> crate::Offset for ParsedTzOffset<'a> {
+    fn to_utc(&self) -> UtcOffset {
+        match self {
+            ParsedTzOffset::Existing(v) => v.to_utc(),
+            ParsedTzOffset::Expanded((_, offset)) => offset.clone()
+        }
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            ParsedTzOffset::Existing(v) => v.name(),
+            ParsedTzOffset::Expanded((name, _)) => name
+        }
+    }
+}
+
+enum ParsedTz1<'a> {
+    Existing(&'static crate::Tz),
+    Expanded((Std<'a>, Option<Dst<'a>>))
+}
+
+impl<'a> TimeZone for ParsedTz1<'a> {
+    type Offset = ParsedTzOffset<'a>;
+
+    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset {
+        match self {
+            ParsedTz1::Existing(v) => ParsedTzOffset::Existing(v.get_offset_utc(date_time)),
+            ParsedTz1::Expanded((std, dst)) => {
+                if dst.is_none() { //Easy case
+                    let offset = UtcOffset::from_whole_seconds(std.offset.to_seconds()).unwrap();
+                    return ParsedTzOffset::Expanded((std.name, offset))
+                }
+                todo!()
+            }
+        }
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            ParsedTz1::Existing(v) => v.name(),
+            ParsedTz1::Expanded((v, _)) => v.name
+        }
+    }
+}
+
+pub struct ParsedTz<'a> {
+    inner: ParsedTz1<'a>
+}
+
+impl<'a> TimeZone for ParsedTz<'a> {
+    type Offset = ParsedTzOffset<'a>;
+
+    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset {
+        self.inner.get_offset_utc(date_time)
+    }
+
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+}
+
+pub fn parse(input: &str) -> Result<ParsedTz, Error> {
+    let (_, inner) = entry(input).map_err(|v| match v {
+        Err::Incomplete(_) => panic!("According to nom docs this case is impossible with complete API."),
+        Err::Error(e) => Error::Nom(e.code),
+        Err::Failure(e) => Error::Nom(e.code)
+    })?;
+    inner.ensure_valid_range().map_err(Error::Range)?;
+    let inner = match inner {
+        Tz::Short(name) => {
+            let tz = crate::timezones::find_by_name(name).first().map(|v| *v).ok_or(Error::UnknownName(name))?;
+            ParsedTz1::Existing(tz)
+        },
+        Tz::Expanded { std, dst } => ParsedTz1::Expanded((std, dst))
+    };
+    Ok(ParsedTz { inner })
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::parser_tz::{Date, Dst, entry, Offset, Rule, Std, Time, Tz};
+    use crate::parse_tz::{Date, Dst, entry, Offset, Rule, Std, Time, Tz};
 
     #[test]
     fn basic() {

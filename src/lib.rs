@@ -69,7 +69,7 @@ pub mod timezones;
 pub mod system;
 
 //TODO: Put behind crate feature once finished
-mod parser_tz;
+pub mod parse_tz;
 
 pub use timezone_impl::Tz;
 
