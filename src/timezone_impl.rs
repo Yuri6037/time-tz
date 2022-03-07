@@ -107,7 +107,8 @@ pub struct TzOffset {
 
 impl Offset for TzOffset {
     fn to_utc(&self) -> UtcOffset {
-        UtcOffset::from_whole_seconds((self.timespan.utc_offset + self.timespan.dst_offset) as i32).unwrap()
+        UtcOffset::from_whole_seconds((self.timespan.utc_offset + self.timespan.dst_offset) as i32)
+            .unwrap()
     }
 
     fn name(&self) -> &str {

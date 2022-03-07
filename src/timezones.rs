@@ -37,7 +37,7 @@ include!(concat!(env!("OUT_DIR"), "/timezones.rs"));
 
 pub fn find_by_name(name: &str) -> Vec<&'static Tz> {
     if let Some(list) = WIN_TIMEZONES.get(name) {
-        list.iter().map(|v| *v).collect()
+        list.iter().copied().collect()
     } else {
         TIMEZONES
             .entries()
@@ -48,13 +48,13 @@ pub fn find_by_name(name: &str) -> Vec<&'static Tz> {
 }
 
 pub fn iter() -> impl Iterator<Item = &'static Tz> {
-    TIMEZONES.values().map(|v| *v)
+    TIMEZONES.values().copied()
 }
 
 pub fn get_by_name(name: &str) -> Option<&'static Tz> {
     if let Some(list) = WIN_TIMEZONES.get(name) {
-        list.iter().nth(0).map(|v| *v)
+        list.get(0).copied()
     } else {
-        TIMEZONES.get(name).map(|v| *v)
+        TIMEZONES.get(name).copied()
     }
 }

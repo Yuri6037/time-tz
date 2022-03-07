@@ -122,6 +122,9 @@ mod tests {
         let odt2 = datetime!(2021-07-01 12:0:0 UTC);
         // Adding offset to datetime call causes VERY surprising result: hours randomly changes!!
         // When using UTC followed by .to_offset no surprising result.
-        assert_eq!(odt2.to_timezone(london), datetime!(2021-07-01 12:0:0 UTC).to_offset(offset!(+1)));
+        assert_eq!(
+            odt2.to_timezone(london),
+            datetime!(2021-07-01 12:0:0 UTC).to_offset(offset!(+1))
+        );
     }
 }
