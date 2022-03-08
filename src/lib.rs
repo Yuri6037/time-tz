@@ -69,7 +69,7 @@ pub mod timezones;
 #[cfg(feature = "system")]
 pub mod system;
 
-//TODO: Put behind crate feature once finished
+#[cfg(feature = "parse-tz")]
 pub mod parse_tz;
 
 pub use timezone_impl::Tz;
