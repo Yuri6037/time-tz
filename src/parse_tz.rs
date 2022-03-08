@@ -26,15 +26,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::TimeZone;
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, take_while_m_n};
 use nom::character::complete::{char as cchar, digit1};
 use nom::combinator::{map_res, opt};
 use nom::error::ErrorKind;
-use nom::{Err, IResult};
 use nom::sequence::{delimited, tuple};
+use nom::{Err, IResult};
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset, Weekday};
-use crate::TimeZone;
 
 const TZNAME_MAX: usize = 16;
 
@@ -42,14 +42,12 @@ const TZNAME_MAX: usize = 16;
 struct Time {
     hh: u8,
     mm: Option<u8>,
-    ss: Option<u8>
+    ss: Option<u8>,
 }
 
 impl Time {
     fn to_seconds(&self) -> u32 {
-        self.hh as u32 * 3600
-            + self.mm.unwrap_or(0) as u32 * 60
-            + self.ss.unwrap_or(0) as u32
+        self.hh as u32 * 3600 + self.mm.unwrap_or(0) as u32 * 60 + self.ss.unwrap_or(0) as u32
     }
 
     fn to_time(&self) -> time::Time {
@@ -65,14 +63,14 @@ impl Time {
 #[derive(Eq, PartialEq, Debug)]
 struct Offset {
     positive: bool,
-    time: Time
+    time: Time,
 }
 
 impl Offset {
     fn to_seconds(&self) -> i32 {
         match self.positive {
             true => self.time.to_seconds() as i32,
-            false => -(self.time.to_seconds() as i32)
+            false => -(self.time.to_seconds() as i32),
         }
     }
 }
@@ -81,11 +79,7 @@ impl Offset {
 enum Date {
     J(u16),
     N(u16),
-    M {
-        m: u8,
-        n: u8,
-        d: u8
-    }
+    M { m: u8, n: u8, d: u8 },
 }
 
 impl Date {
@@ -97,7 +91,7 @@ impl Date {
                 let date = time::Date::from_ordinal_date(2021, *n).unwrap();
                 // Not sure if that will work in all cases though...
                 time::Date::from_calendar_date(year, date.month(), date.day()).unwrap()
-            },
+            }
             // ComponentRange errors should be prevented by is_valid_range.
             Date::N(n) => time::Date::from_ordinal_date(year, *n + 1).unwrap(),
             Date::M { m, n, d } => {
@@ -113,7 +107,7 @@ impl Date {
                     6 => Weekday::Saturday,
                     // SAFETY: This is basically impossible because d is a u8 so by definition
                     // cannot be < 0 and d <= 6 (see is_valid_range).
-                    _ => unsafe { std::hint::unreachable_unchecked() }
+                    _ => unsafe { std::hint::unreachable_unchecked() },
                 };
                 // Here comes the interesting part, I'm not entirely sure unwrap is always gonna
                 // pass here, this needs testing.
@@ -126,8 +120,7 @@ impl Date {
         match self {
             Date::J(v) => v >= &1 && v <= &365,
             Date::N(v) => v <= &365,
-            Date::M { m, n, d } => d <= &6 && n >= &1 && n <= &5 && m >= &1
-                && m <= &12
+            Date::M { m, n, d } => d <= &6 && n >= &1 && n <= &5 && m >= &1 && m <= &12,
         }
     }
 }
@@ -135,29 +128,26 @@ impl Date {
 #[derive(Eq, PartialEq, Debug)]
 struct Rule {
     start: (Date, Option<Time>),
-    end: (Date, Option<Time>)
+    end: (Date, Option<Time>),
 }
 
 #[derive(Eq, PartialEq, Debug)]
 struct Std<'a> {
     name: &'a str,
-    offset: Offset
+    offset: Offset,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 struct Dst<'a> {
     name: &'a str,
     offset: Option<Offset>,
-    rule: Option<Rule>
+    rule: Option<Rule>,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 enum Tz<'a> {
     Short(&'a str),
-    Expanded {
-        std: Std<'a>,
-        dst: Option<Dst<'a>>
-    }
+    Expanded { std: Std<'a>, dst: Option<Dst<'a>> },
 }
 
 impl<'a> Tz<'a> {
@@ -195,13 +185,13 @@ impl<'a> Tz<'a> {
 
 pub enum RangeError {
     Time,
-    Date
+    Date,
 }
 
 pub enum Error<'a> {
     Nom(ErrorKind),
     UnknownName(&'a str),
-    Range(RangeError)
+    Range(RangeError),
 }
 
 fn quoted_name(input: &str) -> IResult<&str, &str> {
@@ -217,10 +207,7 @@ fn name(input: &str) -> IResult<&str, &str> {
 }
 
 fn time_component(input: &str) -> IResult<&str, u8> {
-    map_res(
-        digit1,
-        |v: &str| v.parse::<u8>()
-    )(input)
+    map_res(digit1, |v: &str| v.parse::<u8>())(input)
 }
 
 fn time_component_opt(input: &str) -> IResult<&str, u8> {
@@ -236,7 +223,7 @@ fn time(input: &str) -> IResult<&str, Time> {
     let (input, (hh, mm, ss)) = tuple((
         time_component,
         opt(time_component_opt),
-        opt(time_component_opt)
+        opt(time_component_opt),
     ))(input)?;
     Ok((input, Time { hh, mm, ss }))
 }
@@ -246,7 +233,7 @@ fn time_opt(input: &str) -> IResult<&str, Time> {
         cchar('/'),
         time_component,
         opt(time_component_opt),
-        opt(time_component_opt)
+        opt(time_component_opt),
     ))(input)?;
     Ok((input, Time { hh, mm, ss }))
 }
@@ -258,10 +245,7 @@ fn offset(input: &str) -> IResult<&str, Offset> {
 }
 
 fn date_j(input: &str) -> IResult<&str, Date> {
-    let (input, (_, n)) = tuple((
-        cchar('J'),
-        map_res(digit1, |v: &str| v.parse::<u16>())
-    ))(input)?;
+    let (input, (_, n)) = tuple((cchar('J'), map_res(digit1, |v: &str| v.parse::<u16>())))(input)?;
     Ok((input, Date::J(n)))
 }
 
@@ -277,7 +261,7 @@ fn date_m(input: &str) -> IResult<&str, Date> {
         cchar('.'),
         map_res(digit1, |v: &str| v.parse::<u8>()),
         cchar('.'),
-        map_res(digit1, |v: &str| v.parse::<u8>())
+        map_res(digit1, |v: &str| v.parse::<u8>()),
     ))(input)?;
     Ok((input, Date::M { m, n, d }))
 }
@@ -291,41 +275,28 @@ fn rule(input: &str) -> IResult<&str, Rule> {
         cchar(','),
         tuple((date, opt(time_opt))),
         cchar(','),
-        tuple((date, opt(time_opt)))
+        tuple((date, opt(time_opt))),
     ))(input)?;
     Ok((input, Rule { start, end }))
 }
 
 fn std(input: &str) -> IResult<&str, Std> {
     let (input, (name, offset)) = tuple((name, offset))(input)?;
-    Ok((input, Std {
-        name,
-        offset
-    }))
+    Ok((input, Std { name, offset }))
 }
 
 fn dst(input: &str) -> IResult<&str, Dst> {
-    let (input, (name, offset, rule)) = tuple((
-        name,
-        opt(offset),
-        opt(rule)
-    ))(input)?;
+    let (input, (name, offset, rule)) = tuple((name, opt(offset), opt(rule)))(input)?;
     Ok((input, Dst { name, offset, rule }))
 }
 
 fn tz_short(input: &str) -> IResult<&str, Tz> {
-    let (input, (_, name)) = tuple((
-        cchar(':'),
-        name
-    ))(input)?;
+    let (input, (_, name)) = tuple((cchar(':'), name))(input)?;
     Ok((input, Tz::Short(name)))
 }
 
 fn tz_expanded(input: &str) -> IResult<&str, Tz> {
-    let (input, (std, dst)) = tuple((
-        std,
-        opt(dst)
-    ))(input)?;
+    let (input, (std, dst)) = tuple((std, opt(dst)))(input)?;
     Ok((input, Tz::Expanded { std, dst }))
 }
 
@@ -335,35 +306,35 @@ fn entry(input: &str) -> IResult<&str, Tz> {
 
 pub enum ParsedTzOffset<'a> {
     Existing(crate::timezone_impl::TzOffset),
-    Expanded(&'a str, time::UtcOffset, bool)
+    Expanded(&'a str, time::UtcOffset, bool),
 }
 
 impl<'a> crate::Offset for ParsedTzOffset<'a> {
     fn to_utc(&self) -> UtcOffset {
         match self {
             ParsedTzOffset::Existing(v) => v.to_utc(),
-            ParsedTzOffset::Expanded(_, offset, _) => offset.clone()
+            ParsedTzOffset::Expanded(_, offset, _) => offset.clone(),
         }
     }
 
     fn name(&self) -> &str {
         match self {
             ParsedTzOffset::Existing(v) => v.name(),
-            ParsedTzOffset::Expanded(name, _, _) => name
+            ParsedTzOffset::Expanded(name, _, _) => name,
         }
     }
 
     fn is_dst(&self) -> bool {
         match self {
             ParsedTzOffset::Existing(v) => v.is_dst(),
-            ParsedTzOffset::Expanded(_, _, v) => *v
+            ParsedTzOffset::Expanded(_, _, v) => *v,
         }
     }
 }
 
 enum ParsedTz1<'a> {
     Existing(&'static crate::Tz),
-    Expanded((Std<'a>, Option<Dst<'a>>))
+    Expanded((Std<'a>, Option<Dst<'a>>)),
 }
 
 impl<'a> TimeZone for ParsedTz1<'a> {
@@ -375,7 +346,8 @@ impl<'a> TimeZone for ParsedTz1<'a> {
             ParsedTz1::Expanded((std, dst)) => {
                 let std_offset = UtcOffset::from_whole_seconds(std.offset.to_seconds()).unwrap();
                 match dst {
-                    None => { //Easy case
+                    None => {
+                        //Easy case
                         ParsedTzOffset::Expanded(std.name, std_offset, false)
                     }
                     Some(dst) => {
@@ -392,16 +364,25 @@ impl<'a> TimeZone for ParsedTz1<'a> {
                                 } else {
                                     ParsedTzOffset::Expanded(std.name, std_offset, false)
                                 }
-                            },
+                            }
                             Some(rule) => {
                                 let start_date = rule.start.0.to_date(date_time.year());
                                 let end_date = rule.end.0.to_date(date_time.year());
                                 // SAFETY: This is forcely safe as never ever depends on user input.
-                                let default = unsafe { time::Time::from_hms(2, 0, 0).unwrap_unchecked() };
-                                let start_time = rule.start.1.as_ref().map(|v| v.to_time()).unwrap_or(default);
-                                let end_time = rule.end.1.as_ref().map(|v| v.to_time()).unwrap_or(default);
-                                let start = PrimitiveDateTime::new(start_date, start_time).assume_offset(std_offset);
-                                let end = PrimitiveDateTime::new(end_date, end_time).assume_offset(std_offset);
+                                let default =
+                                    unsafe { time::Time::from_hms(2, 0, 0).unwrap_unchecked() };
+                                let start_time = rule
+                                    .start
+                                    .1
+                                    .as_ref()
+                                    .map(|v| v.to_time())
+                                    .unwrap_or(default);
+                                let end_time =
+                                    rule.end.1.as_ref().map(|v| v.to_time()).unwrap_or(default);
+                                let start = PrimitiveDateTime::new(start_date, start_time)
+                                    .assume_offset(std_offset);
+                                let end = PrimitiveDateTime::new(end_date, end_time)
+                                    .assume_offset(std_offset);
                                 if date_time >= &start && date_time <= &end {
                                     // We are in DST mode.
                                     ParsedTzOffset::Expanded(dst.name, dst_offset, true)
@@ -420,13 +401,13 @@ impl<'a> TimeZone for ParsedTz1<'a> {
     fn name(&self) -> &str {
         match self {
             ParsedTz1::Existing(v) => v.name(),
-            ParsedTz1::Expanded((v, _)) => v.name
+            ParsedTz1::Expanded((v, _)) => v.name,
         }
     }
 }
 
 pub struct ParsedTz<'a> {
-    inner: ParsedTz1<'a>
+    inner: ParsedTz1<'a>,
 }
 
 impl<'a> TimeZone for ParsedTz<'a> {
@@ -443,53 +424,64 @@ impl<'a> TimeZone for ParsedTz<'a> {
 
 pub fn parse(input: &str) -> Result<ParsedTz, Error> {
     let (_, inner) = entry(input).map_err(|v| match v {
-        Err::Incomplete(_) => panic!("According to nom docs this case is impossible with complete API."),
+        Err::Incomplete(_) => {
+            panic!("According to nom docs this case is impossible with complete API.")
+        }
         Err::Error(e) => Error::Nom(e.code),
-        Err::Failure(e) => Error::Nom(e.code)
+        Err::Failure(e) => Error::Nom(e.code),
     })?;
     inner.ensure_valid_range().map_err(Error::Range)?;
     let inner = match inner {
         Tz::Short(name) => {
-            let tz = crate::timezones::find_by_name(name).first().map(|v| *v).ok_or(Error::UnknownName(name))?;
+            let tz = crate::timezones::find_by_name(name)
+                .first()
+                .map(|v| *v)
+                .ok_or(Error::UnknownName(name))?;
             ParsedTz1::Existing(tz)
-        },
-        Tz::Expanded { std, dst } => ParsedTz1::Expanded((std, dst))
+        }
+        Tz::Expanded { std, dst } => ParsedTz1::Expanded((std, dst)),
     };
     Ok(ParsedTz { inner })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parse_tz::{Date, Dst, entry, Offset, Rule, Std, Time, Tz};
+    use crate::parse_tz::{entry, Date, Dst, Offset, Rule, Std, Time, Tz};
 
     #[test]
     fn basic() {
         let str = "ABC+1:00DEF,M1.2.3/4,56";
         let (_, test) = entry(str).unwrap();
-        assert_eq!(test, Tz::Expanded {
-            std: Std {
-                name: "ABC",
-                offset: Offset {
-                    positive: true,
-                    time: Time {
-                        hh: 1,
-                        mm: Some(0),
-                        ss: None
+        assert_eq!(
+            test,
+            Tz::Expanded {
+                std: Std {
+                    name: "ABC",
+                    offset: Offset {
+                        positive: true,
+                        time: Time {
+                            hh: 1,
+                            mm: Some(0),
+                            ss: None
+                        }
                     }
-                }
-            },
-            dst: Some(Dst {
-                name: "DEF",
-                offset: None,
-                rule: Some(Rule {
-                    start: (Date::M { m: 1, n: 2, d: 3 }, Some(Time {
-                        hh: 4,
-                        mm: None,
-                        ss: None
-                    })),
-                    end: (Date::N(56), None)
+                },
+                dst: Some(Dst {
+                    name: "DEF",
+                    offset: None,
+                    rule: Some(Rule {
+                        start: (
+                            Date::M { m: 1, n: 2, d: 3 },
+                            Some(Time {
+                                hh: 4,
+                                mm: None,
+                                ss: None
+                            })
+                        ),
+                        end: (Date::N(56), None)
+                    })
                 })
-            })
-        })
+            }
+        )
     }
 }
