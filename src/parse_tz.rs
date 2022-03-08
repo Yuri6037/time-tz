@@ -297,21 +297,28 @@ fn entry(input: &str) -> IResult<&str, Tz> {
 
 pub enum ParsedTzOffset<'a> {
     Existing(crate::timezone_impl::TzOffset),
-    Expanded((&'a str, time::UtcOffset))
+    Expanded(&'a str, time::UtcOffset, bool)
 }
 
 impl<'a> crate::Offset for ParsedTzOffset<'a> {
     fn to_utc(&self) -> UtcOffset {
         match self {
             ParsedTzOffset::Existing(v) => v.to_utc(),
-            ParsedTzOffset::Expanded((_, offset)) => offset.clone()
+            ParsedTzOffset::Expanded(_, offset, _) => offset.clone()
         }
     }
 
     fn name(&self) -> &str {
         match self {
             ParsedTzOffset::Existing(v) => v.name(),
-            ParsedTzOffset::Expanded((name, _)) => name
+            ParsedTzOffset::Expanded(name, _, _) => name
+        }
+    }
+
+    fn is_dst(&self) -> bool {
+        match self {
+            ParsedTzOffset::Existing(v) => v.is_dst(),
+            ParsedTzOffset::Expanded(_, _, v) => *v
         }
     }
 }
@@ -328,11 +335,32 @@ impl<'a> TimeZone for ParsedTz1<'a> {
         match self {
             ParsedTz1::Existing(v) => ParsedTzOffset::Existing(v.get_offset_utc(date_time)),
             ParsedTz1::Expanded((std, dst)) => {
-                if dst.is_none() { //Easy case
-                    let offset = UtcOffset::from_whole_seconds(std.offset.to_seconds()).unwrap();
-                    return ParsedTzOffset::Expanded((std.name, offset))
+                let std_offset = UtcOffset::from_whole_seconds(std.offset.to_seconds()).unwrap();
+                match dst {
+                    None => { //Easy case
+                        ParsedTzOffset::Expanded(std.name, std_offset, false)
+                    }
+                    Some(dst) => {
+                        // If the offset is undefined then assume +1 as specified by POSIX.
+                        let offset = dst.offset.as_ref().map(|v| v.to_seconds()).unwrap_or(3600);
+                        let dst_offset = UtcOffset::from_whole_seconds(offset).unwrap();
+                        match &dst.rule {
+                            None => {
+                                use crate::Offset;
+                                let timezone = crate::timezones::db::america::NEW_YORK;
+                                let tz_offset = timezone.get_offset_utc(date_time);
+                                if tz_offset.is_dst() {
+                                    ParsedTzOffset::Expanded(dst.name, dst_offset, true)
+                                } else {
+                                    ParsedTzOffset::Expanded(std.name, std_offset, false)
+                                }
+                            },
+                            Some(rule) => {
+                                todo!()
+                            }
+                        }
+                    }
                 }
-                todo!()
             }
         }
     }
