@@ -81,7 +81,7 @@ mod tests {
     use crate::OffsetDateTimeExt;
     use crate::PrimitiveDateTimeExt;
     use crate::TimeZone;
-    use time::macros::datetime;
+    use time::macros::{datetime, offset};
     use time::OffsetDateTime;
 
     #[test]
@@ -116,5 +116,19 @@ mod tests {
         let converted = dt.to_timezone(timezones::db::europe::BERLIN);
         let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezones::db::europe::BERLIN);
         assert_eq!(converted, expected);
+    }
+
+    #[test]
+    fn dst() {
+        let london = timezones::db::europe::LONDON;
+        let odt1 = datetime!(2021-01-01 12:0:0 UTC);
+        assert_eq!(odt1.to_timezone(london), datetime!(2021-01-01 12:0:0 +0));
+        let odt2 = datetime!(2021-07-01 12:0:0 UTC);
+        // Adding offset to datetime call causes VERY surprising result: hours randomly changes!!
+        // When using UTC followed by .to_offset no surprising result.
+        assert_eq!(
+            odt2.to_timezone(london),
+            datetime!(2021-07-01 12:0:0 UTC).to_offset(offset!(+1))
+        );
     }
 }

@@ -75,7 +75,7 @@ fn parse_win_cldr_db() -> phf_codegen::Map<String> {
     for mapping in data.windows_zones.map_timezones.content {
         let zone_name_statics = get_zone_name_static(&mapping.r#type);
         let mut str = String::new();
-        let mut split = zone_name_statics.split(" ").peekable();
+        let mut split = zone_name_statics.split(' ').peekable();
         while let Some(item) = split.next() {
             str += "&internal_tz_new(&";
             str += item;
@@ -123,7 +123,7 @@ impl<'a> ModuleTree<'a> {
     }
 
     pub fn insert(&mut self, zone_name: &'a str, zone_static: String) {
-        let mut path = zone_name.split("/").peekable();
+        let mut path = zone_name.split('/').peekable();
         let mut tree = self;
         while let Some(module) = path.next() {
             if path.peek().is_none() {
@@ -136,7 +136,7 @@ impl<'a> ModuleTree<'a> {
                 tree = tree
                     .sub_modules
                     .entry(module)
-                    .or_insert(ModuleTree::new(module));
+                    .or_insert_with(|| ModuleTree::new(module));
             }
         }
     }
@@ -150,10 +150,10 @@ fn intermal_write_module_tree(
     for zone in &tree.items {
         writeln!(file, "pub const {}: &crate::Tz = &crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
             .to_uppercase()
-            .replace("-", "_")
-            .replace("+", "_PLUS_"), zone.name_static)?;
+            .replace('-', "_")
+            .replace('+', "_PLUS_"), zone.name_static)?;
     }
-    for (_, subtree) in &tree.sub_modules {
+    for subtree in tree.sub_modules.values() {
         intermal_write_module_tree(file, subtree)?;
     }
     writeln!(file, "}}")?;
@@ -161,9 +161,9 @@ fn intermal_write_module_tree(
 }
 
 fn get_zone_name_static(zone: &str) -> String {
-    zone.replace("/", "__")
-        .replace("-", "_")
-        .replace("+", "plus")
+    zone.replace('/', "__")
+        .replace('-', "_")
+        .replace('+', "plus")
         .to_uppercase()
 }
 
@@ -173,7 +173,7 @@ fn internal_write_timezones(file: &mut BufWriter<File>, table: &Table) -> std::i
     let mut root = ModuleTree::new("db");
     for zone in zones {
         let timespans = table.timespans(zone).unwrap();
-        let zone_name_static = get_zone_name_static(&zone);
+        let zone_name_static = get_zone_name_static(zone);
         writeln!(
             file,
             "const {}: FixedTimespanSet = FixedTimespanSet {{",

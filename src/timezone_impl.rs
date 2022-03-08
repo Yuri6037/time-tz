@@ -78,12 +78,11 @@ impl FixedTimespanSet {
             0 => None,
             _ => Some(self.others[i - 1].0),
         };
-        let end;
-        if i >= self.others.len() {
-            end = None;
+        let end = if i >= self.others.len() {
+            None
         } else {
-            end = Some(self.others[i].0)
-        }
+            Some(self.others[i].0)
+        };
         Span { start, end }
     }
 }
@@ -107,7 +106,8 @@ pub struct TzOffset {
 
 impl Offset for TzOffset {
     fn to_utc(&self) -> UtcOffset {
-        UtcOffset::from_whole_seconds(self.timespan.utc_offset as i32).unwrap()
+        UtcOffset::from_whole_seconds((self.timespan.utc_offset + self.timespan.dst_offset) as i32)
+            .unwrap()
     }
 
     fn name(&self) -> &str {
