@@ -33,7 +33,7 @@ use nom::combinator::{map_res, opt};
 use nom::error::ErrorKind;
 use nom::{Err, IResult};
 use nom::sequence::{delimited, tuple};
-use time::{OffsetDateTime, UtcOffset};
+use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset, Weekday};
 use crate::TimeZone;
 
 const TZNAME_MAX: usize = 16;
@@ -50,6 +50,11 @@ impl Time {
         self.hh as u32 * 3600
             + self.mm.unwrap_or(0) as u32 * 60
             + self.ss.unwrap_or(0) as u32
+    }
+
+    fn to_time(&self) -> time::Time {
+        // Here unwrap should always pass because component range is checked in is_valid_range.
+        time::Time::from_hms(self.hh, self.mm.unwrap_or(0), self.ss.unwrap_or(0)).unwrap()
     }
 
     fn is_valid_range(&self) -> bool {
@@ -84,6 +89,39 @@ enum Date {
 }
 
 impl Date {
+    fn to_date(&self, year: i32) -> time::Date {
+        match self {
+            Date::J(n) => {
+                // Hack: the basic idea is 2021 was not a leap year so february only
+                // contains 28 days instead of 29 which matches the POSIX spec.
+                let date = time::Date::from_ordinal_date(2021, *n).unwrap();
+                // Not sure if that will work in all cases though...
+                time::Date::from_calendar_date(year, date.month(), date.day()).unwrap()
+            },
+            // ComponentRange errors should be prevented by is_valid_range.
+            Date::N(n) => time::Date::from_ordinal_date(year, *n + 1).unwrap(),
+            Date::M { m, n, d } => {
+                // One more hack: here w're trying to match Date::from_iso_week_date.
+                let week = m * n;
+                let day = match d {
+                    0 => Weekday::Sunday,
+                    1 => Weekday::Monday,
+                    2 => Weekday::Tuesday,
+                    3 => Weekday::Wednesday,
+                    4 => Weekday::Thursday,
+                    5 => Weekday::Friday,
+                    6 => Weekday::Saturday,
+                    // SAFETY: This is basically impossible because d is a u8 so by definition
+                    // cannot be < 0 and d <= 6 (see is_valid_range).
+                    _ => unsafe { std::hint::unreachable_unchecked() }
+                };
+                // Here comes the interesting part, I'm not entirely sure unwrap is always gonna
+                // pass here, this needs testing.
+                time::Date::from_iso_week_date(year, week, day).unwrap()
+            }
+        }
+    }
+
     fn is_valid_range(&self) -> bool {
         match self {
             Date::J(v) => v >= &1 && v <= &365,
@@ -356,7 +394,21 @@ impl<'a> TimeZone for ParsedTz1<'a> {
                                 }
                             },
                             Some(rule) => {
-                                todo!()
+                                let start_date = rule.start.0.to_date(date_time.year());
+                                let end_date = rule.end.0.to_date(date_time.year());
+                                // SAFETY: This is forcely safe as never ever depends on user input.
+                                let default = unsafe { time::Time::from_hms(2, 0, 0).unwrap_unchecked() };
+                                let start_time = rule.start.1.as_ref().map(|v| v.to_time()).unwrap_or(default);
+                                let end_time = rule.end.1.as_ref().map(|v| v.to_time()).unwrap_or(default);
+                                let start = PrimitiveDateTime::new(start_date, start_time).assume_offset(std_offset);
+                                let end = PrimitiveDateTime::new(end_date, end_time).assume_offset(std_offset);
+                                if date_time >= &start && date_time <= &end {
+                                    // We are in DST mode.
+                                    ParsedTzOffset::Expanded(dst.name, dst_offset, true)
+                                } else {
+                                    // We are in STD mode.
+                                    ParsedTzOffset::Expanded(std.name, std_offset, false)
+                                }
                             }
                         }
                     }
