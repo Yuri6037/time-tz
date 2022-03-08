@@ -118,9 +118,9 @@ impl Date {
 
     fn is_valid_range(&self) -> bool {
         match self {
-            Date::J(v) => v >= &1 && v <= &365,
+            Date::J(v) => (1..=365).contains(v),
             Date::N(v) => v <= &365,
-            Date::M { m, n, d } => d <= &6 && n >= &1 && n <= &5 && m >= &1 && m <= &12,
+            Date::M { m, n, d } => d <= &6 && (1..=5).contains(n) && (1..=12).contains(m),
         }
     }
 }
@@ -313,7 +313,7 @@ impl<'a> crate::Offset for ParsedTzOffset<'a> {
     fn to_utc(&self) -> UtcOffset {
         match self {
             ParsedTzOffset::Existing(v) => v.to_utc(),
-            ParsedTzOffset::Expanded(_, offset, _) => offset.clone(),
+            ParsedTzOffset::Expanded(_, offset, _) => *offset,
         }
     }
 
@@ -435,7 +435,7 @@ pub fn parse(input: &str) -> Result<ParsedTz, Error> {
         Tz::Short(name) => {
             let tz = crate::timezones::find_by_name(name)
                 .first()
-                .map(|v| *v)
+                .copied()
                 .ok_or(Error::UnknownName(name))?;
             ParsedTz1::Existing(tz)
         }
