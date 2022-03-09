@@ -108,21 +108,24 @@ fn sign(input: &str) -> Result<char> {
 }
 
 fn time(input: &str) -> Result<Time> {
-    let (input, (hh, mm, ss)) = tuple((
+    tuple((
         time_component,
         opt(time_component_opt),
         opt(time_component_opt),
-    ))(input)?;
-    Ok((input, Time { hh, mm, ss }))
+    ))(input)
+    .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
 }
 
 fn time_opt(input: &str) -> Result<Time> {
-    let (input, (hh, mm, ss)) = preceded(cchar('/'),tuple((
-        time_component,
-        opt(time_component_opt),
-        opt(time_component_opt),
-    )))(input)?;
-    Ok((input, Time { hh, mm, ss }))
+    preceded(
+        cchar('/'),
+        tuple((
+            time_component,
+            opt(time_component_opt),
+            opt(time_component_opt),
+        )),
+    )(input)
+    .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
 }
 
 fn offset(input: &str) -> Result<Offset> {
@@ -132,22 +135,21 @@ fn offset(input: &str) -> Result<Offset> {
 }
 
 fn date_j(input: &str) -> Result<Date> {
-    let (input, n) = preceded(cchar('J'), map_res(digit1, |v: &str| v.parse::<u16>()))(input)?;
-    Ok((input, Date::J(n)))
+    preceded(cchar('J'), map_res(digit1, |v: &str| v.parse::<u16>()))(input)
+        .map(|(input, n)| (input, Date::J(n)))
 }
 
 fn date_n(input: &str) -> Result<Date> {
-    let (input, n) = map_res(digit1, |v: &str| v.parse::<u16>())(input)?;
-    Ok((input, Date::N(n)))
+    map_res(digit1, |v: &str| v.parse::<u16>())(input).map(|(input, n)| (input, Date::N(n)))
 }
 
 fn date_m(input: &str) -> Result<Date> {
-    let (input, (m, n, d)) = tuple((
+    tuple((
         preceded(cchar('M'), map_res(digit1, |v: &str| v.parse::<u8>())),
         preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
-        preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>()))
-    ))(input)?;
-    Ok((input, Date::M { m, n, d }))
+        preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
+    ))(input)
+    .map(|(input, (m, n, d))| (input, Date::M { m, n, d }))
 }
 
 fn date(input: &str) -> Result<Date> {
@@ -155,31 +157,28 @@ fn date(input: &str) -> Result<Date> {
 }
 
 fn rule(input: &str) -> Result<Rule> {
-    let (input, (start, end)) = tuple((
+    tuple((
         preceded(cchar(','), tuple((date, opt(time_opt)))),
-        preceded(cchar(','), tuple((date, opt(time_opt))))
-    ))(input)?;
-    Ok((input, Rule { start, end }))
+        preceded(cchar(','), tuple((date, opt(time_opt)))),
+    ))(input)
+    .map(|(input, (start, end))| (input, Rule { start, end }))
 }
 
 fn std(input: &str) -> Result<Std> {
-    let (input, (name, offset)) = tuple((name, offset))(input)?;
-    Ok((input, Std { name, offset }))
+    tuple((name, offset))(input).map(|(input, (name, offset))| (input, Std { name, offset }))
 }
 
 fn dst(input: &str) -> Result<Dst> {
-    let (input, (name, offset, rule)) = tuple((name, opt(offset), opt(rule)))(input)?;
-    Ok((input, Dst { name, offset, rule }))
+    tuple((name, opt(offset), opt(rule)))(input)
+        .map(|(input, (name, offset, rule))| (input, Dst { name, offset, rule }))
 }
 
 fn tz_short(input: &str) -> Result<Tz> {
-    let (input, name) = preceded(cchar(':'), name)(input)?;
-    Ok((input, Tz::Short(name)))
+    preceded(cchar(':'), name)(input).map(|(input, name)| (input, Tz::Short(name)))
 }
 
 fn tz_expanded(input: &str) -> Result<Tz> {
-    let (input, (std, dst)) = tuple((std, opt(dst)))(input)?;
-    Ok((input, Tz::Expanded { std, dst }))
+    tuple((std, opt(dst)))(input).map(|(input, (std, dst))| (input, Tz::Expanded { std, dst }))
 }
 
 pub fn entry(input: &str) -> Result<Tz> {
