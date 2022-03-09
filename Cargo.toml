@@ -17,11 +17,11 @@ phf = "0.10.1"
 time = { version = "0.3.7", features = ["macros"] }
 cfg-if = "1.0.0"
 
-#TODO: Put behind crate feature once finished
+thiserror = { version = "1.0.30", optional = true }
 nom = { version = "7.1.0", optional = true }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.32.0", features = ["Win32_System_Time", "Win32_Foundation"] }
+windows-sys = { version = "0.32.0", features = ["Win32_System_Time", "Win32_Foundation"], optional = true }
 
 [build-dependencies]
 parse-zoneinfo = { version = "0.3" }
@@ -30,5 +30,5 @@ serde-xml-rs = "0.5.1"
 serde = { version = "1.0.136", features = ["derive"] }
 
 [features]
-system = []
-parse-tz = ["nom"]
+system = ["windows-sys", "thiserror"]
+parse-tz = ["nom", "thiserror"]

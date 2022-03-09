@@ -26,14 +26,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::{Display, Formatter};
 use crate::{Offset, TimeZone};
 use time::{OffsetDateTime, UtcOffset};
+use thiserror::Error;
 
 mod r#abstract;
 mod intermediate;
 mod parser;
 
 /// A range error returned when a field is out of the range defined in POSIX.
+#[derive(Debug)]
 pub enum RangeError {
     /// One of the time field in the given string was out of range.
     Time,
@@ -42,24 +45,39 @@ pub enum RangeError {
     Date,
 }
 
+impl Display for RangeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RangeError::Time => f.write_str("time field out of range"),
+            RangeError::Date => f.write_str("date field out of range")
+        }
+    }
+}
+
 /// The main type of error that is returned when a TZ POSIX string fails to parse.
+#[derive(Debug, Error)]
 pub enum Error<'a> {
     /// A nom parsing error.
+    #[error("nom error: {:?}", .0)]
     Nom(nom::error::ErrorKind),
 
     /// In case a short format was given, the POSIX standard doesn't define what to do,
     /// in this implementation we just try to match the first tzdb timezone containing the
     /// short name; if none could be found this error variant is returned.
+    #[error("unknown short timezone name `{0}`")]
     UnknownName(&'a str),
 
     /// We've exceeded the range of a field when checking for conformance against the POSIX
     /// standard.
+    #[error("range error: {0}")]
     Range(RangeError),
 
     /// We've exceeded the range of a date component when converting types to time-r.
+    #[error("time component range error: {0}")]
     ComponentRange(time::error::ComponentRange),
 
     /// We've exceeded the maximum date supported by time-rs.
+    #[error("value of Date too large")]
     DateTooLarge,
 }
 
