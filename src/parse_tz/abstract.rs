@@ -120,7 +120,7 @@ pub enum TzOrExpanded<'a> {
     Expanded(ExpandedTz<'a>),
 }
 
-pub fn parse_abstract<'a>(input: ParsedTz<'a>) -> Result<TzOrExpanded, Error> {
+pub fn parse_abstract(input: ParsedTz) -> Result<TzOrExpanded, Error> {
     match input {
         ParsedTz::Existing(v) => Ok(TzOrExpanded::Tz(v)),
         ParsedTz::Expanded((std, dst)) => {
