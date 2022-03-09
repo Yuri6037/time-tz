@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use time::{OffsetDateTime, UtcOffset};
 use crate::{Offset, TimeZone};
+use time::{OffsetDateTime, UtcOffset};
 
-mod parser;
-mod intermediate;
 mod r#abstract;
+mod intermediate;
+mod parser;
 
 /// A range error returned when a field is out of the range defined in POSIX.
 pub enum RangeError {
@@ -60,38 +60,38 @@ pub enum Error<'a> {
     ComponentRange(time::error::ComponentRange),
 
     /// We've exceeded the maximum date supported by time-rs.
-    DateTooLarge
+    DateTooLarge,
 }
 
 pub struct ParsedTzOffset<'a> {
-    inner: r#abstract::TzOrExpandedOffset<'a>
+    inner: r#abstract::TzOrExpandedOffset<'a>,
 }
 
 impl<'a> Offset for ParsedTzOffset<'a> {
     fn to_utc(&self) -> UtcOffset {
         match &self.inner {
             r#abstract::TzOrExpandedOffset::Expanded(v) => v.to_utc(),
-            r#abstract::TzOrExpandedOffset::Tz(v) => v.to_utc()
+            r#abstract::TzOrExpandedOffset::Tz(v) => v.to_utc(),
         }
     }
 
     fn name(&self) -> &str {
         match &self.inner {
             r#abstract::TzOrExpandedOffset::Expanded(v) => v.name(),
-            r#abstract::TzOrExpandedOffset::Tz(v) => v.name()
+            r#abstract::TzOrExpandedOffset::Tz(v) => v.name(),
         }
     }
 
     fn is_dst(&self) -> bool {
         match &self.inner {
             r#abstract::TzOrExpandedOffset::Expanded(v) => v.is_dst(),
-            r#abstract::TzOrExpandedOffset::Tz(v) => v.is_dst()
+            r#abstract::TzOrExpandedOffset::Tz(v) => v.is_dst(),
         }
     }
 }
 
 pub struct ParsedTz<'a> {
-    inner: r#abstract::TzOrExpanded<'a>
+    inner: r#abstract::TzOrExpanded<'a>,
 }
 
 impl<'a> TimeZone for ParsedTz<'a> {
@@ -100,18 +100,18 @@ impl<'a> TimeZone for ParsedTz<'a> {
     fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset {
         match &self.inner {
             r#abstract::TzOrExpanded::Tz(v) => ParsedTzOffset {
-                inner: r#abstract::TzOrExpandedOffset::Tz(v.get_offset_utc(date_time))
+                inner: r#abstract::TzOrExpandedOffset::Tz(v.get_offset_utc(date_time)),
             },
             r#abstract::TzOrExpanded::Expanded(v) => ParsedTzOffset {
-                inner: r#abstract::TzOrExpandedOffset::Expanded(v.get_offset_utc(date_time))
-            }
+                inner: r#abstract::TzOrExpandedOffset::Expanded(v.get_offset_utc(date_time)),
+            },
         }
     }
 
     fn name(&self) -> &str {
         match &self.inner {
             r#abstract::TzOrExpanded::Tz(v) => v.name(),
-            r#abstract::TzOrExpanded::Expanded(v) => v.name()
+            r#abstract::TzOrExpanded::Expanded(v) => v.name(),
         }
     }
 }

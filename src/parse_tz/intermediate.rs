@@ -26,26 +26,26 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use time::{Duration, Month, Weekday};
-use crate::parse_tz::parser::{Dst, entry, Std, Tz};
-use crate::parse_tz::{Error, RangeError};
-use super::parser::Time;
-use super::parser::Offset;
 use super::parser::Date;
+use super::parser::Offset;
+use super::parser::Time;
+use crate::parse_tz::parser::{entry, Dst, Std, Tz};
+use crate::parse_tz::{Error, RangeError};
 use nom::Err;
+use time::{Duration, Month, Weekday};
 
 // This hack is needed because rust cannot figure that the lifetime of Error is not used by
 // to_date.
 pub enum BypassRustDefect {
     ComponentRange(time::error::ComponentRange),
-    DateTooLarge
+    DateTooLarge,
 }
 
 impl BypassRustDefect {
     pub fn into<'a>(self) -> Error<'a> {
         match self {
             BypassRustDefect::ComponentRange(v) => Error::ComponentRange(v),
-            BypassRustDefect::DateTooLarge => Error::DateTooLarge
+            BypassRustDefect::DateTooLarge => Error::DateTooLarge,
         }
     }
 }
@@ -80,12 +80,15 @@ impl Date {
             Date::J(n) => {
                 // Hack: the basic idea is 2021 was not a leap year so february only
                 // contains 28 days instead of 29 which matches the POSIX spec.
-                let date = time::Date::from_ordinal_date(2021, *n).map_err(BypassRustDefect::ComponentRange)?;
+                let date = time::Date::from_ordinal_date(2021, *n)
+                    .map_err(BypassRustDefect::ComponentRange)?;
                 // Not sure if that will work in all cases though...
-                time::Date::from_calendar_date(year, date.month(), date.day()).map_err(BypassRustDefect::ComponentRange)
+                time::Date::from_calendar_date(year, date.month(), date.day())
+                    .map_err(BypassRustDefect::ComponentRange)
             }
             // ComponentRange errors should be prevented by is_valid_range.
-            Date::N(n) => time::Date::from_ordinal_date(year, *n + 1).map_err(BypassRustDefect::ComponentRange),
+            Date::N(n) => time::Date::from_ordinal_date(year, *n + 1)
+                .map_err(BypassRustDefect::ComponentRange),
             Date::M { m, n, d } => {
                 // One more hack: here w're trying to match Date::from_iso_week_date.
                 let month = match m {
@@ -117,13 +120,16 @@ impl Date {
                     // cannot be < 0 and d <= 6 (see is_valid_range).
                     _ => unsafe { std::hint::unreachable_unchecked() },
                 };
-                let mut date = time::Date::from_calendar_date(year, month, 1).map_err(BypassRustDefect::ComponentRange)?;
+                let mut date = time::Date::from_calendar_date(year, month, 1)
+                    .map_err(BypassRustDefect::ComponentRange)?;
                 while date.weekday() != day {
                     date = date.next_day().ok_or(BypassRustDefect::DateTooLarge)?;
                 }
                 let next_month = date.month().next();
                 // Advance of (n - 1) * 7 days.
-                date = date.checked_add(Duration::days((*n as i64 - 1) * 7)).ok_or(BypassRustDefect::DateTooLarge)?;
+                date = date
+                    .checked_add(Duration::days((*n as i64 - 1) * 7))
+                    .ok_or(BypassRustDefect::DateTooLarge)?;
                 if *n == 5 && date.month() == next_month {
                     date -= Duration::days(7); //Shift back of 7 days.
                 }
