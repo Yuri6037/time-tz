@@ -30,7 +30,7 @@ use nom::branch::alt;
 use nom::bytes::complete::{is_not, take_while_m_n};
 use nom::character::complete::{char as cchar, digit1};
 use nom::combinator::{map_res, opt};
-use nom::sequence::{delimited, tuple};
+use nom::sequence::{delimited, preceded, tuple};
 use nom::IResult;
 
 const TZNAME_MAX: usize = 16;
@@ -99,7 +99,7 @@ fn time_component(input: &str) -> Result<u8> {
 }
 
 fn time_component_opt(input: &str) -> Result<u8> {
-    let (v, (_, v1)) = tuple((cchar(':'), time_component))(input)?;
+    let (v, v1) = preceded(cchar(':'), time_component)(input)?;
     Ok((v, v1))
 }
 
@@ -117,12 +117,11 @@ fn time(input: &str) -> Result<Time> {
 }
 
 fn time_opt(input: &str) -> Result<Time> {
-    let (input, (_, hh, mm, ss)) = tuple((
-        cchar('/'),
+    let (input, (hh, mm, ss)) = preceded(cchar('/'),tuple((
         time_component,
         opt(time_component_opt),
         opt(time_component_opt),
-    ))(input)?;
+    )))(input)?;
     Ok((input, Time { hh, mm, ss }))
 }
 
@@ -133,7 +132,7 @@ fn offset(input: &str) -> Result<Offset> {
 }
 
 fn date_j(input: &str) -> Result<Date> {
-    let (input, (_, n)) = tuple((cchar('J'), map_res(digit1, |v: &str| v.parse::<u16>())))(input)?;
+    let (input, n) = preceded(cchar('J'), map_res(digit1, |v: &str| v.parse::<u16>()))(input)?;
     Ok((input, Date::J(n)))
 }
 
@@ -143,13 +142,10 @@ fn date_n(input: &str) -> Result<Date> {
 }
 
 fn date_m(input: &str) -> Result<Date> {
-    let (input, (_, m, _, n, _, d)) = tuple((
-        cchar('M'),
-        map_res(digit1, |v: &str| v.parse::<u8>()),
-        cchar('.'),
-        map_res(digit1, |v: &str| v.parse::<u8>()),
-        cchar('.'),
-        map_res(digit1, |v: &str| v.parse::<u8>()),
+    let (input, (m, n, d)) = tuple((
+        preceded(cchar('M'), map_res(digit1, |v: &str| v.parse::<u8>())),
+        preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
+        preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>()))
     ))(input)?;
     Ok((input, Date::M { m, n, d }))
 }
@@ -159,11 +155,9 @@ fn date(input: &str) -> Result<Date> {
 }
 
 fn rule(input: &str) -> Result<Rule> {
-    let (input, (_, start, _, end)) = tuple((
-        cchar(','),
-        tuple((date, opt(time_opt))),
-        cchar(','),
-        tuple((date, opt(time_opt))),
+    let (input, (start, end)) = tuple((
+        preceded(cchar(','), tuple((date, opt(time_opt)))),
+        preceded(cchar(','), tuple((date, opt(time_opt))))
     ))(input)?;
     Ok((input, Rule { start, end }))
 }
@@ -179,7 +173,7 @@ fn dst(input: &str) -> Result<Dst> {
 }
 
 fn tz_short(input: &str) -> Result<Tz> {
-    let (input, (_, name)) = tuple((cchar(':'), name))(input)?;
+    let (input, name) = preceded(cchar(':'), name)(input)?;
     Ok((input, Tz::Short(name)))
 }
 
