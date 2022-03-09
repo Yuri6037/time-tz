@@ -130,12 +130,13 @@ pub fn parse_abstract<'a>(input: ParsedTz<'a>) -> Result<TzOrExpanded, Error> {
         ParsedTz::Expanded((std, dst)) => {
             //Take the oposite of offset because POSIX assumes it at inverse:
             // local + offset = utc instead of utc + offset = local.
-            let std_offset = UtcOffset::from_whole_seconds(-std.offset.to_seconds()).map_err(Error::ComponentRange)?;
+            let tmp = std.offset.to_seconds();
+            let std_offset = UtcOffset::from_whole_seconds(-tmp).map_err(Error::ComponentRange)?;
             let std = ExpandedMode { name: std.name, offset: std_offset };
             let (dst, rule) = match dst {
                 None => (None, None),
                 Some(v) => {
-                    let offset = v.offset.map(|v| v.to_seconds()).unwrap_or(1);
+                    let offset = v.offset.map(|v| v.to_seconds()).unwrap_or(tmp + 3600);
                     let dst_offset = UtcOffset::from_whole_seconds(-offset).map_err(Error::ComponentRange)?;
                     let rule = match &v.rule {
                         None => None,
