@@ -35,6 +35,8 @@ use nom::IResult;
 
 const TZNAME_MAX: usize = 16;
 
+type Result<'a, T> = IResult<&'a str, T>;
+
 #[derive(Eq, PartialEq, Debug)]
 pub struct Time {
     pub hh: u8,
@@ -80,32 +82,32 @@ pub enum Tz<'a> {
     Expanded { std: Std<'a>, dst: Option<Dst<'a>> },
 }
 
-fn quoted_name(input: &str) -> IResult<&str, &str> {
+fn quoted_name(input: &str) -> Result<&str> {
     delimited(cchar('<'), is_not("<>"), cchar('>'))(input)
 }
 
-fn unquoted_name(input: &str) -> IResult<&str, &str> {
+fn unquoted_name(input: &str) -> Result<&str> {
     take_while_m_n(3, TZNAME_MAX, |c: char| c.is_alphabetic())(input)
 }
 
-fn name(input: &str) -> IResult<&str, &str> {
+fn name(input: &str) -> Result<&str> {
     alt((quoted_name, unquoted_name))(input)
 }
 
-fn time_component(input: &str) -> IResult<&str, u8> {
+fn time_component(input: &str) -> Result<u8> {
     map_res(digit1, |v: &str| v.parse::<u8>())(input)
 }
 
-fn time_component_opt(input: &str) -> IResult<&str, u8> {
+fn time_component_opt(input: &str) -> Result<u8> {
     let (v, (_, v1)) = tuple((cchar(':'), time_component))(input)?;
     Ok((v, v1))
 }
 
-fn sign(input: &str) -> IResult<&str, char> {
+fn sign(input: &str) -> Result<char> {
     alt((cchar('+'), cchar('-')))(input)
 }
 
-fn time(input: &str) -> IResult<&str, Time> {
+fn time(input: &str) -> Result<Time> {
     let (input, (hh, mm, ss)) = tuple((
         time_component,
         opt(time_component_opt),
@@ -114,7 +116,7 @@ fn time(input: &str) -> IResult<&str, Time> {
     Ok((input, Time { hh, mm, ss }))
 }
 
-fn time_opt(input: &str) -> IResult<&str, Time> {
+fn time_opt(input: &str) -> Result<Time> {
     let (input, (_, hh, mm, ss)) = tuple((
         cchar('/'),
         time_component,
@@ -124,23 +126,23 @@ fn time_opt(input: &str) -> IResult<&str, Time> {
     Ok((input, Time { hh, mm, ss }))
 }
 
-fn offset(input: &str) -> IResult<&str, Offset> {
+fn offset(input: &str) -> Result<Offset> {
     let (input, (sign, time)) = tuple((opt(sign), time))(input)?;
     let positive = sign.map(|v| v == '+').unwrap_or(true);
     Ok((input, Offset { positive, time }))
 }
 
-fn date_j(input: &str) -> IResult<&str, Date> {
+fn date_j(input: &str) -> Result<Date> {
     let (input, (_, n)) = tuple((cchar('J'), map_res(digit1, |v: &str| v.parse::<u16>())))(input)?;
     Ok((input, Date::J(n)))
 }
 
-fn date_n(input: &str) -> IResult<&str, Date> {
+fn date_n(input: &str) -> Result<Date> {
     let (input, n) = map_res(digit1, |v: &str| v.parse::<u16>())(input)?;
     Ok((input, Date::N(n)))
 }
 
-fn date_m(input: &str) -> IResult<&str, Date> {
+fn date_m(input: &str) -> Result<Date> {
     let (input, (_, m, _, n, _, d)) = tuple((
         cchar('M'),
         map_res(digit1, |v: &str| v.parse::<u8>()),
@@ -152,11 +154,11 @@ fn date_m(input: &str) -> IResult<&str, Date> {
     Ok((input, Date::M { m, n, d }))
 }
 
-fn date(input: &str) -> IResult<&str, Date> {
+fn date(input: &str) -> Result<Date> {
     alt((date_j, date_m, date_n))(input)
 }
 
-fn rule(input: &str) -> IResult<&str, Rule> {
+fn rule(input: &str) -> Result<Rule> {
     let (input, (_, start, _, end)) = tuple((
         cchar(','),
         tuple((date, opt(time_opt))),
@@ -166,27 +168,27 @@ fn rule(input: &str) -> IResult<&str, Rule> {
     Ok((input, Rule { start, end }))
 }
 
-fn std(input: &str) -> IResult<&str, Std> {
+fn std(input: &str) -> Result<Std> {
     let (input, (name, offset)) = tuple((name, offset))(input)?;
     Ok((input, Std { name, offset }))
 }
 
-fn dst(input: &str) -> IResult<&str, Dst> {
+fn dst(input: &str) -> Result<Dst> {
     let (input, (name, offset, rule)) = tuple((name, opt(offset), opt(rule)))(input)?;
     Ok((input, Dst { name, offset, rule }))
 }
 
-fn tz_short(input: &str) -> IResult<&str, Tz> {
+fn tz_short(input: &str) -> Result<Tz> {
     let (input, (_, name)) = tuple((cchar(':'), name))(input)?;
     Ok((input, Tz::Short(name)))
 }
 
-fn tz_expanded(input: &str) -> IResult<&str, Tz> {
+fn tz_expanded(input: &str) -> Result<Tz> {
     let (input, (std, dst)) = tuple((std, opt(dst)))(input)?;
     Ok((input, Tz::Expanded { std, dst }))
 }
 
-pub fn entry(input: &str) -> IResult<&str, Tz> {
+pub fn entry(input: &str) -> Result<Tz> {
     alt((tz_short, tz_expanded))(input)
 }
 
