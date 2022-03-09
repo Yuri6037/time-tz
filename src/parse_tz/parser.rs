@@ -29,8 +29,8 @@
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, take_while_m_n};
 use nom::character::complete::{char as cchar, digit1};
-use nom::combinator::{map_res, opt};
-use nom::sequence::{delimited, preceded, tuple};
+use nom::combinator::{eof, map_res, opt};
+use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 const TZNAME_MAX: usize = 16;
@@ -113,7 +113,7 @@ fn time(input: &str) -> Result<Time> {
         opt(time_component_opt),
         opt(time_component_opt),
     ))(input)
-    .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
+        .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
 }
 
 fn time_opt(input: &str) -> Result<Time> {
@@ -125,7 +125,7 @@ fn time_opt(input: &str) -> Result<Time> {
             opt(time_component_opt),
         )),
     )(input)
-    .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
+        .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
 }
 
 fn offset(input: &str) -> Result<Offset> {
@@ -149,7 +149,7 @@ fn date_m(input: &str) -> Result<Date> {
         preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
         preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
     ))(input)
-    .map(|(input, (m, n, d))| (input, Date::M { m, n, d }))
+        .map(|(input, (m, n, d))| (input, Date::M { m, n, d }))
 }
 
 fn date(input: &str) -> Result<Date> {
@@ -161,7 +161,7 @@ fn rule(input: &str) -> Result<Rule> {
         preceded(cchar(','), tuple((date, opt(time_opt)))),
         preceded(cchar(','), tuple((date, opt(time_opt)))),
     ))(input)
-    .map(|(input, (start, end))| (input, Rule { start, end }))
+        .map(|(input, (start, end))| (input, Rule { start, end }))
 }
 
 fn std(input: &str) -> Result<Std> {
@@ -182,7 +182,7 @@ fn tz_expanded(input: &str) -> Result<Tz> {
 }
 
 pub fn entry(input: &str) -> Result<Tz> {
-    alt((tz_short, tz_expanded))(input)
+    terminated(alt((tz_short, tz_expanded)), eof)(input)
 }
 
 #[cfg(test)]
@@ -203,9 +203,9 @@ mod tests {
                         time: Time {
                             hh: 1,
                             mm: Some(0),
-                            ss: None
-                        }
-                    }
+                            ss: None,
+                        },
+                    },
                 },
                 dst: Some(Dst {
                     name: "DEF",
@@ -216,12 +216,12 @@ mod tests {
                             Some(Time {
                                 hh: 4,
                                 mm: None,
-                                ss: None
+                                ss: None,
                             })
                         ),
-                        end: (Date::N(56), None)
-                    })
-                })
+                        end: (Date::N(56), None),
+                    }),
+                }),
             }
         )
     }
