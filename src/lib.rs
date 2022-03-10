@@ -69,8 +69,8 @@ pub mod timezones;
 #[cfg(feature = "system")]
 pub mod system;
 
-#[cfg(feature = "parse-tz")]
-pub mod parse_tz;
+#[cfg(feature = "posix-tz")]
+pub mod posix_tz;
 
 pub use timezone_impl::Tz;
 

@@ -50,7 +50,7 @@ pub struct Offset {
     pub time: Time,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum Date {
     J(u16),
     N(u16),
@@ -187,7 +187,7 @@ pub fn entry(input: &str) -> Result<Tz> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse_tz::parser::{entry, Date, Dst, Offset, Rule, Std, Time, Tz};
+    use crate::posix_tz::parser::{entry, Date, Dst, Offset, Rule, Std, Time, Tz};
 
     #[test]
     fn basic() {

@@ -29,26 +29,10 @@
 use super::parser::Date;
 use super::parser::Offset;
 use super::parser::Time;
-use crate::parse_tz::parser::{entry, Dst, Std, Tz};
-use crate::parse_tz::{Error, RangeError};
+use crate::posix_tz::parser::{entry, Dst, Std, Tz};
+use crate::posix_tz::{Error, ParseError, RangeError};
 use nom::Err;
 use time::{Duration, Month, Weekday};
-
-// This hack is needed because rust cannot figure that the lifetime of Error is not used by
-// to_date.
-pub enum BypassRustDefect {
-    ComponentRange(time::error::ComponentRange),
-    DateTooLarge,
-}
-
-impl BypassRustDefect {
-    pub fn into<'a>(self) -> Error<'a> {
-        match self {
-            BypassRustDefect::ComponentRange(v) => Error::ComponentRange(v),
-            BypassRustDefect::DateTooLarge => Error::DateTooLarge,
-        }
-    }
-}
 
 impl Time {
     fn to_seconds(&self) -> u32 {
@@ -75,20 +59,20 @@ impl Offset {
 }
 
 impl Date {
-    pub fn to_date(&self, year: i32) -> Result<time::Date, BypassRustDefect> {
+    pub fn to_date(self, year: i32) -> Result<time::Date, Error> {
         match self {
             Date::J(n) => {
                 // Hack: the basic idea is 2021 was not a leap year so february only
                 // contains 28 days instead of 29 which matches the POSIX spec.
-                let date = time::Date::from_ordinal_date(2021, *n)
-                    .map_err(BypassRustDefect::ComponentRange)?;
+                let date = time::Date::from_ordinal_date(2021, n)
+                    .map_err(Error::ComponentRange)?;
                 // Not sure if that will work in all cases though...
                 time::Date::from_calendar_date(year, date.month(), date.day())
-                    .map_err(BypassRustDefect::ComponentRange)
+                    .map_err(Error::ComponentRange)
             }
             // ComponentRange errors should be prevented by is_valid_range.
-            Date::N(n) => time::Date::from_ordinal_date(year, *n + 1)
-                .map_err(BypassRustDefect::ComponentRange),
+            Date::N(n) => time::Date::from_ordinal_date(year, n + 1)
+                .map_err(Error::ComponentRange),
             Date::M { m, n, d } => {
                 // One more hack: here w're trying to match Date::from_iso_week_date.
                 let month = match m {
@@ -121,16 +105,16 @@ impl Date {
                     _ => unsafe { std::hint::unreachable_unchecked() },
                 };
                 let mut date = time::Date::from_calendar_date(year, month, 1)
-                    .map_err(BypassRustDefect::ComponentRange)?;
+                    .map_err(Error::ComponentRange)?;
                 while date.weekday() != day {
-                    date = date.next_day().ok_or(BypassRustDefect::DateTooLarge)?;
+                    date = date.next_day().ok_or(Error::DateTooLarge)?;
                 }
                 let next_month = date.month().next();
                 // Advance of (n - 1) * 7 days.
                 date = date
-                    .checked_add(Duration::days((*n as i64 - 1) * 7))
-                    .ok_or(BypassRustDefect::DateTooLarge)?;
-                if *n == 5 && date.month() == next_month {
+                    .checked_add(Duration::days((n as i64 - 1) * 7))
+                    .ok_or(Error::DateTooLarge)?;
+                if n == 5 && date.month() == next_month {
                     date -= Duration::days(7); //Shift back of 7 days.
                 }
                 Ok(date)
@@ -185,21 +169,21 @@ pub enum ParsedTz<'a> {
     Expanded((Std<'a>, Option<Dst<'a>>)),
 }
 
-pub fn parse_intermediate(input: &str) -> Result<ParsedTz, Error> {
+pub fn parse_intermediate(input: &str) -> Result<ParsedTz, ParseError> {
     let (_, inner) = entry(input).map_err(|v| match v {
         Err::Incomplete(_) => {
             panic!("According to nom docs this case is impossible with complete API.")
         }
-        Err::Error(e) => Error::Nom(e.code),
-        Err::Failure(e) => Error::Nom(e.code),
+        Err::Error(e) => ParseError::Nom(e.code),
+        Err::Failure(e) => ParseError::Nom(e.code),
     })?;
-    inner.ensure_valid_range().map_err(Error::Range)?;
+    inner.ensure_valid_range().map_err(ParseError::Range)?;
     Ok(match inner {
         Tz::Short(name) => {
             let tz = crate::timezones::find_by_name(name)
                 .first()
                 .copied()
-                .ok_or(Error::UnknownName(name))?;
+                .ok_or(ParseError::UnknownName(name))?;
             ParsedTz::Existing(tz)
         }
         Tz::Expanded { std, dst } => ParsedTz::Expanded((std, dst)),

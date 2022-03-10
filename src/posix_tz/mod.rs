@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt::{Display, Formatter};
-use crate::{Offset, TimeZone};
+use crate::{Offset, TimeZone, Tz};
 use time::{OffsetDateTime, UtcOffset};
 use thiserror::Error;
 
@@ -56,7 +56,7 @@ impl Display for RangeError {
 
 /// The main type of error that is returned when a TZ POSIX string fails to parse.
 #[derive(Debug, Error)]
-pub enum Error<'a> {
+pub enum ParseError<'a> {
     /// A nom parsing error.
     #[error("nom error: {:?}", .0)]
     Nom(nom::error::ErrorKind),
@@ -72,20 +72,30 @@ pub enum Error<'a> {
     #[error("range error: {0}")]
     Range(RangeError),
 
-    /// We've exceeded the range of a date component when converting types to time-r.
+    /// We've exceeded the range of a date component when converting types to time-rs.
+    #[error("time component range error: {0}")]
+    ComponentRange(time::error::ComponentRange)
+}
+
+/// The type of error return when a given Offset/PrimitiveDateTime cannot be represented
+/// in a given POSIX TZ formatted "timezone".
+#[derive(Debug, Error)]
+pub enum Error {
+    /// We've exceeded the range of a date component when converting types to time-rs.
     #[error("time component range error: {0}")]
     ComponentRange(time::error::ComponentRange),
 
     /// We've exceeded the maximum date supported by time-rs.
     #[error("value of Date too large")]
-    DateTooLarge,
+    DateTooLarge
 }
 
-pub struct ParsedTzOffset<'a> {
+/// A POSIX "timezone" offset.
+pub struct PosixTzOffset<'a> {
     inner: r#abstract::TzOrExpandedOffset<'a>,
 }
 
-impl<'a> Offset for ParsedTzOffset<'a> {
+impl<'a> Offset for PosixTzOffset<'a> {
     fn to_utc(&self) -> UtcOffset {
         match &self.inner {
             r#abstract::TzOrExpandedOffset::Expanded(v) => v.to_utc(),
@@ -108,34 +118,89 @@ impl<'a> Offset for ParsedTzOffset<'a> {
     }
 }
 
-pub struct ParsedTz<'a> {
+/// A "timezone" in POSIX TZ format.
+pub struct PosixTz<'a> {
     inner: r#abstract::TzOrExpanded<'a>,
 }
 
-impl<'a> TimeZone for ParsedTz<'a> {
-    type Offset = ParsedTzOffset<'a>;
+impl<'a> PosixTz<'a> {
+    /// Parse the given POSIX TZ string.
+    ///
+    /// # Arguments
+    ///
+    /// * `input`: the string to parse.
+    ///
+    /// returns: Result<PosixTz, ParseError>
+    ///
+    /// # Errors
+    ///
+    /// Returns a [ParseError](crate::posix_tz::ParseError) if the given string is not a valid
+    /// POSIX "timezone".
+    pub fn parse(input: &'a str) -> Result<PosixTz<'a>, ParseError> {
+        let intermediate = intermediate::parse_intermediate(input)?;
+        let inner = r#abstract::parse_abstract(intermediate)?;
+        Ok(PosixTz { inner })
+    }
 
-    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset {
-        match &self.inner {
-            r#abstract::TzOrExpanded::Tz(v) => ParsedTzOffset {
+    /// Convert the given date_time to this "timezone".
+    ///
+    /// # Arguments
+    ///
+    /// * `date_time`: the date time to convert.
+    ///
+    /// returns: Result<OffsetDateTime, Error>
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error](crate::posix_tz::Error) if the date_time cannot be represented in this
+    /// "timezone".
+    pub fn convert(&self, date_time: &OffsetDateTime) -> Result<OffsetDateTime, Error> {
+        let offset = self.get_offset(date_time)?;
+        Ok(date_time.to_offset(offset.to_utc()))
+    }
+
+    /// Calculates the offset to add to the given date_time to convert it to this "timezone".
+    ///
+    /// # Arguments
+    ///
+    /// * `date_time`: the date time to calculate offset of.
+    ///
+    /// returns: Result<OffsetDateTime, Error>
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error](crate::posix_tz::Error) if the date_time cannot be represented in this
+    /// "timezone".
+    pub fn get_offset(&self, date_time: &OffsetDateTime) -> Result<PosixTzOffset<'a>, Error> {
+        Ok(match &self.inner {
+            r#abstract::TzOrExpanded::Tz(v) => PosixTzOffset {
                 inner: r#abstract::TzOrExpandedOffset::Tz(v.get_offset_utc(date_time)),
             },
-            r#abstract::TzOrExpanded::Expanded(v) => ParsedTzOffset {
-                inner: r#abstract::TzOrExpandedOffset::Expanded(v.get_offset_utc(date_time)),
+            r#abstract::TzOrExpanded::Expanded(v) => PosixTzOffset {
+                inner: r#abstract::TzOrExpandedOffset::Expanded(v.get_offset_utc(date_time)?),
             },
-        }
+        })
     }
 
-    fn name(&self) -> &str {
+    /// Gets the current time in this "timezone".
+    ///
+    /// returns: Result<OffsetDateTime, Error>
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error](crate::posix_tz::Error) if the current time cannot be represented in
+    /// this "timezone".
+    pub fn now(&self) -> Result<OffsetDateTime, Error> {
+        self.convert(&OffsetDateTime::now_utc())
+    }
+
+    /// Returns the precise IANA TimeZone associated to this POSIX "timezone".
+    ///
+    /// If this POSIX "timezone" is not a precise IANA TimeZone, None is returned.
+    pub fn as_iana(&self) -> Option<&'static Tz> {
         match &self.inner {
-            r#abstract::TzOrExpanded::Tz(v) => v.name(),
-            r#abstract::TzOrExpanded::Expanded(v) => v.name(),
+            r#abstract::TzOrExpanded::Tz(v) => Some(*v),
+            r#abstract::TzOrExpanded::Expanded(_) => None
         }
     }
-}
-
-pub fn parse<'a>(input: &'a str) -> Result<ParsedTz<'a>, Error> {
-    let intermediate = intermediate::parse_intermediate(input)?;
-    let inner = r#abstract::parse_abstract(intermediate)?;
-    Ok(ParsedTz { inner })
 }

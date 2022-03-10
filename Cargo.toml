@@ -31,4 +31,4 @@ serde = { version = "1.0.136", features = ["derive"] }
 
 [features]
 system = ["windows-sys", "thiserror"]
-parse-tz = ["nom", "thiserror"]
+posix-tz = ["nom", "thiserror"]
