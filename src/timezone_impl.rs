@@ -113,6 +113,10 @@ impl Offset for TzOffset {
     fn name(&self) -> &str {
         self.timespan.name
     }
+
+    fn is_dst(&self) -> bool {
+        self.timespan.dst_offset > 0
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

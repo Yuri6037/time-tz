@@ -31,6 +31,7 @@ use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 pub trait Offset {
     fn to_utc(&self) -> UtcOffset;
     fn name(&self) -> &str;
+    fn is_dst(&self) -> bool;
 }
 
 pub trait TimeZone {
@@ -67,6 +68,9 @@ pub mod timezones;
 
 #[cfg(feature = "system")]
 pub mod system;
+
+#[cfg(feature = "posix-tz")]
+pub mod posix_tz;
 
 pub use timezone_impl::Tz;
 

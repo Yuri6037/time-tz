@@ -28,39 +28,30 @@
 
 use crate::timezones::get_by_name;
 use crate::Tz;
-use std::fmt::{Display, Formatter};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
     /// An IO error has occurred.
+    #[error("io error: {0}")]
     Io(std::io::Error),
 
     /// An OS level error has occurred (can only happen on Windows).
+    #[error("low-level os error")]
     Os,
 
     /// The timezone is undetermined (means the timezone is not defined or that the system
     /// itself doesn't know the its timezone).
+    #[error("undefined timezone")]
     Undetermined,
 
     /// Somehow the read timezone name contains non unicode...
+    #[error("timezone name is not unicode")]
     Unicode,
 
     /// The timezone doesn't exist in the crate's database.
+    #[error("unknown timezone name")]
     Unknown,
-}
-
-impl std::error::Error for Error {}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Io(e) => write!(f, "io error: {}", e),
-            Error::Os => f.write_str("low-level os error"),
-            Error::Undetermined => f.write_str("undefined timezone"),
-            Error::Unicode => f.write_str("timezone name is not unicode"),
-            Error::Unknown => f.write_str("unknown timezone name"),
-        }
-    }
 }
 
 pub fn get_timezone() -> Result<&'static Tz, Error> {
