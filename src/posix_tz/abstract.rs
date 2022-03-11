@@ -126,8 +126,8 @@ pub fn parse_abstract(input: ParsedTz) -> Result<TzOrExpanded, ParseError> {
         ParsedTz::Expanded((std, dst)) => {
             //Take the oposite of offset because POSIX assumes it at inverse:
             // local + offset = utc instead of utc + offset = local.
-            let tmp = std.offset.to_seconds();
-            let std_offset = UtcOffset::from_whole_seconds(-tmp).map_err(ParseError::ComponentRange)?;
+            let tmp = -std.offset.to_seconds();
+            let std_offset = UtcOffset::from_whole_seconds(tmp).map_err(ParseError::ComponentRange)?;
             let std = ExpandedMode {
                 name: std.name,
                 offset: std_offset,
@@ -137,9 +137,9 @@ pub fn parse_abstract(input: ParsedTz) -> Result<TzOrExpanded, ParseError> {
                 Some(v) => {
                     // If no offset is specified the POSIX standard defines +1 hour in standard
                     // time as default.
-                    let offset = v.offset.map(|v| v.to_seconds()).unwrap_or(tmp + 3600);
+                    let offset = v.offset.map(|v| -v.to_seconds()).unwrap_or(tmp + 3600);
                     let dst_offset =
-                        UtcOffset::from_whole_seconds(-offset).map_err(ParseError::ComponentRange)?;
+                        UtcOffset::from_whole_seconds(offset).map_err(ParseError::ComponentRange)?;
                     let rule = match &v.rule {
                         None => None,
                         Some(v) => {
