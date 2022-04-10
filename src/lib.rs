@@ -26,134 +26,28 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
+//! This provides traits and utilities to work with timezones to time-rs and additionally has an
+//! implementation of IANA timezone database. To disable the integrated IANA/windows databases,
+//! one can simply remove the `db` default feature.
 
-/// This trait is not intended to be implemented outside of this library, as such no guarantees on
-/// API stability when implementing are provided.
-pub trait Offset {
-    /// Converts this timezone offset to a [UtcOffset](time::UtcOffset).
-    fn to_utc(&self) -> UtcOffset;
+use time::{OffsetDateTime, PrimitiveDateTime};
 
-    /// Returns the name of this offset.
-    fn name(&self) -> &str;
+mod sealing {
+    pub trait OffsetDateTimeExt {}
+    pub trait PrimitiveDateTimeExt {}
 
-    /// Returns true if this offset is DST in the corresponding timezone, false otherwise.
-    fn is_dst(&self) -> bool;
+    impl OffsetDateTimeExt for time::OffsetDateTime {}
+    impl PrimitiveDateTimeExt for time::PrimitiveDateTime {}
 }
 
-/// This represents the possible types of errors when trying to find a local offset.
-#[derive(Clone, Copy, Debug)]
-pub enum OffsetResult<T> {
-    /// The date time is not ambiguous (exactly 1 is possible).
-    Some(T),
-
-    /// The date time is ambiguous (2 are possible).
-    Ambiguous(T, T),
-
-    /// The date time is invalid.
-    None,
-}
-
-impl<T> OffsetResult<T> {
-    /// Unwraps this OffsetResult assuming ambiguity is an error.
-    pub fn unwrap(self) -> T {
-        match self {
-            OffsetResult::Some(v) => v,
-            OffsetResult::Ambiguous(_, _) => panic!("Attempt to unwrap an ambiguous offset"),
-            OffsetResult::None => panic!("Attempt to unwrap an invalid offset"),
-        }
-    }
-
-    /// Unwraps this OffsetResult resolving ambiguity by taking the first result.
-    pub fn unwrap_first(self) -> T {
-        match self {
-            OffsetResult::Some(v) => v,
-            OffsetResult::Ambiguous(v, _) => v,
-            OffsetResult::None => panic!("Attempt to unwrap an invalid offset"),
-        }
-    }
-
-    /// Unwraps this OffsetResult resolving ambiguity by taking the second result.
-    pub fn unwrap_second(self) -> T {
-        match self {
-            OffsetResult::Some(v) => v,
-            OffsetResult::Ambiguous(_, v) => v,
-            OffsetResult::None => panic!("Attempt to unwrap an invalid offset"),
-        }
-    }
-
-    /// Turns this OffsetResult into an Option assuming ambiguity is an error.
-    pub fn take(self) -> Option<T> {
-        match self {
-            OffsetResult::Some(v) => Some(v),
-            OffsetResult::Ambiguous(_, _) => None,
-            OffsetResult::None => None,
-        }
-    }
-
-    /// Turns this OffsetResult into an Option resolving ambiguity by taking the first result.
-    pub fn take_first(self) -> Option<T> {
-        match self {
-            OffsetResult::Some(v) => Some(v),
-            OffsetResult::Ambiguous(v, _) => Some(v),
-            OffsetResult::None => None,
-        }
-    }
-
-    /// Turns this OffsetResult into an Option resolving ambiguity by taking the second result.
-    pub fn take_second(self) -> Option<T> {
-        match self {
-            OffsetResult::Some(v) => Some(v),
-            OffsetResult::Ambiguous(_, v) => Some(v),
-            OffsetResult::None => None,
-        }
-    }
-
-    /// Returns true if this OffsetResult is None.
-    pub fn is_none(&self) -> bool {
-        match self {
-            OffsetResult::Some(_) => false,
-            OffsetResult::Ambiguous(_, _) => false,
-            OffsetResult::None => true,
-        }
-    }
-
-    /// Returns true if this OffsetResult is ambiguous.
-    pub fn is_ambiguous(&self) -> bool {
-        match self {
-            OffsetResult::Some(_) => false,
-            OffsetResult::Ambiguous(_, _) => true,
-            OffsetResult::None => false,
-        }
-    }
-}
-
-/// This trait is not intended to be implemented outside of this library, as such no guarantees on
-/// API stability when implementing are provided.
-pub trait TimeZone {
-    /// The type of offset.
-    type Offset: Offset;
-
-    /// Search for the given date time offset (assuming it is UTC) in this timezone.
-    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset;
-
-    /// Search for the given date time offset (assuming it is already local) in this timezone.
-    fn get_offset_local(&self, date_time: &OffsetDateTime) -> OffsetResult<Self::Offset>;
-
-    /// Gets the main/default offset in this timezone.
-    fn get_offset_primary(&self) -> Self::Offset;
-
-    /// Returns the name of this timezone.
-    fn name(&self) -> &str;
-}
-
-pub trait OffsetDateTimeExt {
+// This trait is sealed and is only implemented in this library.
+pub trait OffsetDateTimeExt: sealing::OffsetDateTimeExt {
+    /// Converts this OffsetDateTime to a different TimeZone.
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 }
 
-/// This trait is not intended to be implemented outside of this library, as such no guarantees on
-/// API stability when implementing are provided.
-pub trait PrimitiveDateTimeExt {
+/// This trait is sealed and is only implemented in this library.
+pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     /// Creates a new OffsetDateTime from a PrimitiveDateTime by assigning the main offset of the
     /// target timezone.
     ///
@@ -205,7 +99,12 @@ impl OffsetDateTimeExt for OffsetDateTime {
 
 mod binary_search;
 mod timezone_impl;
+mod interface;
+
+#[cfg(feature = "db")]
 pub mod timezones;
+
+pub use interface::*;
 
 #[cfg(feature = "system")]
 pub mod system;
@@ -213,6 +112,7 @@ pub mod system;
 #[cfg(feature = "posix-tz")]
 pub mod posix_tz;
 
+#[cfg(feature = "db")]
 pub use timezone_impl::Tz;
 
 #[cfg(test)]

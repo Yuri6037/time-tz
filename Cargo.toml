@@ -30,5 +30,7 @@ serde-xml-rs = "0.5.1"
 serde = { version = "1.0.136", features = ["derive"] }
 
 [features]
-system = ["windows-sys", "thiserror"]
-posix-tz = ["nom", "thiserror"]
+default = ["db"]
+system = ["windows-sys", "thiserror", "db"]
+posix-tz = ["nom", "thiserror", "db"]
+db = []
