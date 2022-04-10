@@ -41,6 +41,93 @@ pub trait Offset {
     fn is_dst(&self) -> bool;
 }
 
+/// This represents the possible types of errors when trying to find a local offset.
+#[derive(Clone, Copy, Debug)]
+pub enum OffsetResult<T> {
+    /// The date time is not ambiguous (exactly 1 is possible).
+    Some(T),
+
+    /// The date time is ambiguous (2 are possible).
+    Ambiguous(T, T),
+
+    /// The date time is invalid.
+    None
+}
+
+impl<T> OffsetResult<T> {
+    /// Unwraps this OffsetResult assuming ambiguity is an error.
+    pub fn unwrap(self) -> T {
+        match self {
+            OffsetResult::Some(v) => v,
+            OffsetResult::Ambiguous(_, _) => panic!("Attempt to unwrap an ambiguous offset"),
+            OffsetResult::None => panic!("Attempt to unwrap an invalid offset")
+        }
+    }
+
+    /// Unwraps this OffsetResult resolving ambiguity by taking the first result.
+    pub fn unwrap_first(self) -> T {
+        match self {
+            OffsetResult::Some(v) => v,
+            OffsetResult::Ambiguous(v, _) => v,
+            OffsetResult::None => panic!("Attempt to unwrap an invalid offset")
+        }
+    }
+
+    /// Unwraps this OffsetResult resolving ambiguity by taking the second result.
+    pub fn unwrap_second(self) -> T {
+        match self {
+            OffsetResult::Some(v) => v,
+            OffsetResult::Ambiguous(_, v) => v,
+            OffsetResult::None => panic!("Attempt to unwrap an invalid offset")
+        }
+    }
+
+    /// Turns this OffsetResult into an Option assuming ambiguity is an error.
+    pub fn take(self) -> Option<T> {
+        match self {
+            OffsetResult::Some(v) => Some(v),
+            OffsetResult::Ambiguous(_, _) => None,
+            OffsetResult::None => None
+        }
+    }
+
+    /// Turns this OffsetResult into an Option resolving ambiguity by taking the first result.
+    pub fn take_first(self) -> Option<T> {
+        match self {
+            OffsetResult::Some(v) => Some(v),
+            OffsetResult::Ambiguous(v, _) => Some(v),
+            OffsetResult::None => None
+        }
+    }
+
+    /// Turns this OffsetResult into an Option resolving ambiguity by taking the second result.
+    pub fn take_second(self) -> Option<T> {
+        match self {
+            OffsetResult::Some(v) => Some(v),
+            OffsetResult::Ambiguous(_, v) => Some(v),
+            OffsetResult::None => None
+        }
+    }
+
+    /// Returns true if this OffsetResult is None.
+    pub fn is_none(&self) -> bool {
+        match self {
+            OffsetResult::Some(_) => false,
+            OffsetResult::Ambiguous(_, _) => false,
+            OffsetResult::None => true
+        }
+    }
+
+    /// Returns true if this OffsetResult is ambiguous.
+    pub fn is_ambiguous(&self) -> bool {
+        match self {
+            OffsetResult::Some(_) => false,
+            OffsetResult::Ambiguous(_, _) => true,
+            OffsetResult::None => false
+        }
+    }
+}
+
 /// This trait is not intended to be implemented outside of this library, as such no guarantees on
 /// API stability when implementing are provided.
 pub trait TimeZone {
@@ -49,6 +136,9 @@ pub trait TimeZone {
 
     /// Search for the given date time offset (assuming it is UTC) in this timezone.
     fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset;
+
+    /// Search for the given date time offset (assuming it is already local) in this timezone.
+    fn get_offset_local(&self, date_time: &OffsetDateTime) -> OffsetResult<Self::Offset>;
 
     /// Gets the main/default offset in this timezone.
     fn get_offset_primary(&self) -> Self::Offset;
@@ -73,8 +163,8 @@ pub trait PrimitiveDateTimeExt {
     ///
     /// * `tz`: the target timezone.
     ///
-    /// returns: OffsetDateTime
-    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+    /// returns: OffsetResult<OffsetDateTime>
+    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime>;
 
     /// Creates a new OffsetDateTime with the proper offset in the given timezone.
     ///
@@ -89,8 +179,12 @@ pub trait PrimitiveDateTimeExt {
 }
 
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
-    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
-        self.assume_offset(tz.get_offset_primary().to_utc())
+    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime> {
+        match tz.get_offset_local(&self.assume_utc()) {
+            OffsetResult::Some(a) => OffsetResult::Some(self.assume_offset(a.to_utc())),
+            OffsetResult::Ambiguous(a, b) => OffsetResult::Ambiguous(self.assume_offset(a.to_utc()), self.assume_offset(b.to_utc())),
+            OffsetResult::None => OffsetResult::None
+        }
     }
 
     fn assume_timezone_utc<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
@@ -180,20 +274,33 @@ mod tests {
     #[test]
     fn handles_forward_changeover() {
         assert_eq!(
-            datetime!(2022-03-27 01:30).assume_timezone(timezones::db::CET),
+            datetime!(2022-03-27 01:30).assume_timezone(timezones::db::CET).unwrap(),
             datetime!(2022-03-27 01:30 +01:00)
         );
     }
 
     #[test]
+    fn handles_after_changeover() {
+        assert_eq!(
+            datetime!(2022-03-27 03:30).assume_timezone(timezones::db::CET).unwrap(),
+            datetime!(2022-03-27 03:30 +02:00)
+        );
+    }
+
+    #[test]
+    fn handles_broken_time() {
+        assert!(datetime!(2022-03-27 02:30).assume_timezone(timezones::db::CET).is_none());
+    }
+
+    #[test]
     fn handles_backward_changeover() {
         // During backward changeover, the hour between 02:00 and 03:00 occurs twice, so either answer is correct
-        /* assert_eq!(
-            datetime!(2022-10-30 02:30).assume_timezone(CET),
-            datetime!(2022-10-30 02:30 +02:00)
-        ); */
         assert_eq!(
-            datetime!(2022-10-30 02:30).assume_timezone(timezones::db::CET),
+            datetime!(2022-10-30 02:30).assume_timezone(timezones::db::CET).unwrap_first(),
+            datetime!(2022-10-30 02:30 +02:00)
+        );
+        assert_eq!(
+            datetime!(2022-10-30 02:30).assume_timezone(timezones::db::CET).unwrap_second(),
             datetime!(2022-10-30 02:30 +01:00)
         );
     }
