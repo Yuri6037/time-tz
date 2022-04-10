@@ -26,31 +26,39 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
+//! This provides traits and utilities to work with timezones to time-rs and additionally has an
+//! implementation of IANA timezone database. To disable the integrated IANA/windows databases,
+//! one can simply remove the `db` default feature.
 
-pub trait Offset {
-    fn to_utc(&self) -> UtcOffset;
-    fn name(&self) -> &str;
-    fn is_dst(&self) -> bool;
+use time::{OffsetDateTime, PrimitiveDateTime};
+
+mod sealing {
+    pub trait OffsetDateTimeExt {}
+    pub trait PrimitiveDateTimeExt {}
+
+    impl OffsetDateTimeExt for time::OffsetDateTime {}
+    impl PrimitiveDateTimeExt for time::PrimitiveDateTime {}
 }
 
-pub trait TimeZone {
-    type Offset: Offset;
-    fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Self::Offset;
-    fn name(&self) -> &str;
-}
-
-pub trait OffsetDateTimeExt {
+// This trait is sealed and is only implemented in this library.
+pub trait OffsetDateTimeExt: sealing::OffsetDateTimeExt {
+    /// Converts this OffsetDateTime to a different TimeZone.
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 }
 
-/// This trait is not intended to be implemented outside of this library, as such no guarantees on
-/// API stability are provided.
-pub trait PrimitiveDateTimeExt {
-    /// Please use `assume_timezone_utc` as in a future version of this library, this function
-    /// will assume the PrimitiveDateTime is already in the target timezone.
-    #[deprecated(since = "0.6.0", note = "use assume_timezone_utc")]
-    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+/// This trait is sealed and is only implemented in this library.
+pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
+    /// Creates a new OffsetDateTime from a PrimitiveDateTime by assigning the main offset of the
+    /// target timezone.
+    ///
+    /// *This assumes the PrimitiveDateTime is already in the target timezone.*
+    ///
+    /// # Arguments
+    ///
+    /// * `tz`: the target timezone.
+    ///
+    /// returns: OffsetResult<OffsetDateTime>
+    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime>;
 
     /// Creates a new OffsetDateTime with the proper offset in the given timezone.
     ///
@@ -65,14 +73,20 @@ pub trait PrimitiveDateTimeExt {
 }
 
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
-    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
-        let offset = tz.get_offset_utc(&self.assume_utc());
-        self.assume_offset(offset.to_utc())
+    fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime> {
+        match tz.get_offset_local(&self.assume_utc()) {
+            OffsetResult::Some(a) => OffsetResult::Some(self.assume_offset(a.to_utc())),
+            OffsetResult::Ambiguous(a, b) => OffsetResult::Ambiguous(
+                self.assume_offset(a.to_utc()),
+                self.assume_offset(b.to_utc()),
+            ),
+            OffsetResult::None => OffsetResult::None,
+        }
     }
 
     fn assume_timezone_utc<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
-        #[allow(deprecated)]
-        self.assume_timezone(tz)
+        let offset = tz.get_offset_utc(&self.assume_utc());
+        self.assume_offset(offset.to_utc())
     }
 }
 
@@ -85,7 +99,12 @@ impl OffsetDateTimeExt for OffsetDateTime {
 
 mod binary_search;
 mod timezone_impl;
+mod interface;
+
+#[cfg(feature = "db")]
 pub mod timezones;
+
+pub use interface::*;
 
 #[cfg(feature = "system")]
 pub mod system;
@@ -93,6 +112,7 @@ pub mod system;
 #[cfg(feature = "posix-tz")]
 pub mod posix_tz;
 
+#[cfg(feature = "db")]
 pub use timezone_impl::Tz;
 
 #[cfg(test)]
@@ -151,6 +171,50 @@ mod tests {
         assert_eq!(
             odt2.to_timezone(london),
             datetime!(2021-07-01 12:0:0 UTC).to_offset(offset!(+1))
+        );
+    }
+
+    #[test]
+    fn handles_forward_changeover() {
+        assert_eq!(
+            datetime!(2022-03-27 01:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap(),
+            datetime!(2022-03-27 01:30 +01:00)
+        );
+    }
+
+    #[test]
+    fn handles_after_changeover() {
+        assert_eq!(
+            datetime!(2022-03-27 03:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap(),
+            datetime!(2022-03-27 03:30 +02:00)
+        );
+    }
+
+    #[test]
+    fn handles_broken_time() {
+        assert!(datetime!(2022-03-27 02:30)
+            .assume_timezone(timezones::db::CET)
+            .is_none());
+    }
+
+    #[test]
+    fn handles_backward_changeover() {
+        // During backward changeover, the hour between 02:00 and 03:00 occurs twice, so either answer is correct
+        assert_eq!(
+            datetime!(2022-10-30 02:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap_first(),
+            datetime!(2022-10-30 02:30 +02:00)
+        );
+        assert_eq!(
+            datetime!(2022-10-30 02:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap_second(),
+            datetime!(2022-10-30 02:30 +01:00)
         );
     }
 }

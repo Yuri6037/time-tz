@@ -32,7 +32,7 @@ fn main()
     // The function returns None if the timezone doesn't exist.
 
     // Now we can create a primitive date time and call the extension function:
-    let dt = datetime!(2016-10-8 17:0:0).assume_timezone(london);
+    let dt = datetime!(2016-10-8 17:0:0).assume_timezone_utc(london);
 
 
     // ===========================
