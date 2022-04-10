@@ -64,15 +64,13 @@ impl Date {
             Date::J(n) => {
                 // Hack: the basic idea is 2021 was not a leap year so february only
                 // contains 28 days instead of 29 which matches the POSIX spec.
-                let date = time::Date::from_ordinal_date(2021, n)
-                    .map_err(Error::ComponentRange)?;
+                let date = time::Date::from_ordinal_date(2021, n).map_err(Error::ComponentRange)?;
                 // Not sure if that will work in all cases though...
                 time::Date::from_calendar_date(year, date.month(), date.day())
                     .map_err(Error::ComponentRange)
             }
             // ComponentRange errors should be prevented by is_valid_range.
-            Date::N(n) => time::Date::from_ordinal_date(year, n + 1)
-                .map_err(Error::ComponentRange),
+            Date::N(n) => time::Date::from_ordinal_date(year, n + 1).map_err(Error::ComponentRange),
             Date::M { m, n, d } => {
                 // One more hack: here w're trying to match Date::from_iso_week_date.
                 // SAFETY: This always works because m >= 1

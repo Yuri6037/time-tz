@@ -113,7 +113,7 @@ fn time(input: &str) -> Result<Time> {
         opt(time_component_opt),
         opt(time_component_opt),
     ))(input)
-        .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
+    .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
 }
 
 fn time_opt(input: &str) -> Result<Time> {
@@ -125,7 +125,7 @@ fn time_opt(input: &str) -> Result<Time> {
             opt(time_component_opt),
         )),
     )(input)
-        .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
+    .map(|(input, (hh, mm, ss))| (input, Time { hh, mm, ss }))
 }
 
 fn offset(input: &str) -> Result<Offset> {
@@ -149,7 +149,7 @@ fn date_m(input: &str) -> Result<Date> {
         preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
         preceded(cchar('.'), map_res(digit1, |v: &str| v.parse::<u8>())),
     ))(input)
-        .map(|(input, (m, n, d))| (input, Date::M { m, n, d }))
+    .map(|(input, (m, n, d))| (input, Date::M { m, n, d }))
 }
 
 fn date(input: &str) -> Result<Date> {
@@ -161,7 +161,7 @@ fn rule(input: &str) -> Result<Rule> {
         preceded(cchar(','), tuple((date, opt(time_opt)))),
         preceded(cchar(','), tuple((date, opt(time_opt)))),
     ))(input)
-        .map(|(input, (start, end))| (input, Rule { start, end }))
+    .map(|(input, (start, end))| (input, Rule { start, end }))
 }
 
 fn std(input: &str) -> Result<Std> {

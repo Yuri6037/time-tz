@@ -44,14 +44,35 @@ pub trait OffsetDateTimeExt {
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 }
 
+/// This trait is not intended to be implemented outside of this library, as such no guarantees on
+/// API stability are provided.
 pub trait PrimitiveDateTimeExt {
+    /// Please use `assume_timezone_utc` as in a future version of this library, this function
+    /// will assume the PrimitiveDateTime is already in the target timezone.
+    #[deprecated(since = "0.6.0", note = "use assume_timezone_utc")]
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+
+    /// Creates a new OffsetDateTime with the proper offset in the given timezone.
+    ///
+    /// *This assumes the PrimitiveDateTime is in UTC offset.*
+    ///
+    /// # Arguments
+    ///
+    /// * `tz`: the target timezone.
+    ///
+    /// returns: OffsetDateTime
+    fn assume_timezone_utc<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 }
 
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
         let offset = tz.get_offset_utc(&self.assume_utc());
         self.assume_offset(offset.to_utc())
+    }
+
+    fn assume_timezone_utc<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
+        #[allow(deprecated)]
+        self.assume_timezone(tz)
     }
 }
 
@@ -112,9 +133,10 @@ mod tests {
 
     #[test]
     fn london_to_berlin() {
-        let dt = datetime!(2016-10-8 17:0:0).assume_timezone(timezones::db::europe::LONDON);
+        let dt = datetime!(2016-10-8 17:0:0).assume_timezone_utc(timezones::db::europe::LONDON);
         let converted = dt.to_timezone(timezones::db::europe::BERLIN);
-        let expected = datetime!(2016-10-8 18:0:0).assume_timezone(timezones::db::europe::BERLIN);
+        let expected =
+            datetime!(2016-10-8 18:0:0).assume_timezone_utc(timezones::db::europe::BERLIN);
         assert_eq!(converted, expected);
     }
 

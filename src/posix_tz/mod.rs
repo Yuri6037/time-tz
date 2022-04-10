@@ -26,10 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::{Display, Formatter};
 use crate::{Offset, TimeZone, Tz};
-use time::{OffsetDateTime, UtcOffset};
+use std::fmt::{Display, Formatter};
 use thiserror::Error;
+use time::{OffsetDateTime, UtcOffset};
 
 mod r#abstract;
 mod intermediate;
@@ -49,7 +49,7 @@ impl Display for RangeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RangeError::Time => f.write_str("time field out of range"),
-            RangeError::Date => f.write_str("date field out of range")
+            RangeError::Date => f.write_str("date field out of range"),
         }
     }
 }
@@ -74,7 +74,7 @@ pub enum ParseError<'a> {
 
     /// We've exceeded the range of a date component when converting types to time-rs.
     #[error("time component range error: {0}")]
-    ComponentRange(time::error::ComponentRange)
+    ComponentRange(time::error::ComponentRange),
 }
 
 /// The type of error return when a given Offset/PrimitiveDateTime cannot be represented
@@ -87,7 +87,7 @@ pub enum Error {
 
     /// We've exceeded the maximum date supported by time-rs.
     #[error("value of Date too large")]
-    DateTooLarge
+    DateTooLarge,
 }
 
 /// A POSIX "timezone" offset.
@@ -200,7 +200,7 @@ impl<'a> PosixTz<'a> {
     pub fn as_iana(&self) -> Option<&'static Tz> {
         match &self.inner {
             r#abstract::TzOrExpanded::Tz(v) => Some(*v),
-            r#abstract::TzOrExpanded::Expanded(_) => None
+            r#abstract::TzOrExpanded::Expanded(_) => None,
         }
     }
 }

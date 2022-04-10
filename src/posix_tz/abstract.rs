@@ -27,11 +27,11 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::posix_tz::intermediate::ParsedTz;
+use crate::posix_tz::parser::Date;
 use crate::posix_tz::{Error, ParseError};
 use crate::timezone_impl::TzOffset;
 use crate::Tz;
 use time::{OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
-use crate::posix_tz::parser::Date;
 
 pub enum TzOrExpandedOffset<'a> {
     Expanded(ExpandedTzOffset<'a>),
@@ -76,7 +76,10 @@ pub struct ExpandedTz<'a> {
 }
 
 impl<'a> ExpandedTz<'a> {
-    pub fn get_offset_utc(&self, date_time: &OffsetDateTime) -> Result<ExpandedTzOffset<'a>, Error> {
+    pub fn get_offset_utc(
+        &self,
+        date_time: &OffsetDateTime,
+    ) -> Result<ExpandedTzOffset<'a>, Error> {
         match self.dst {
             None => Ok(ExpandedTzOffset {
                 mode: self.std,
@@ -94,10 +97,14 @@ impl<'a> ExpandedTz<'a> {
                     })
                 }
                 Some(rule) => {
-                    let start = PrimitiveDateTime::new(rule.start.0.to_date(date_time.year())?, rule.start.1)
-                        .assume_offset(self.std.offset);
-                    let end = PrimitiveDateTime::new(rule.end.0.to_date(date_time.year())?, rule.end.1)
-                        .assume_offset(dst.offset);
+                    let start = PrimitiveDateTime::new(
+                        rule.start.0.to_date(date_time.year())?,
+                        rule.start.1,
+                    )
+                    .assume_offset(self.std.offset);
+                    let end =
+                        PrimitiveDateTime::new(rule.end.0.to_date(date_time.year())?, rule.end.1)
+                            .assume_offset(dst.offset);
                     if date_time >= &start && date_time < &end {
                         Ok(ExpandedTzOffset {
                             mode: dst,
@@ -127,7 +134,8 @@ pub fn parse_abstract(input: ParsedTz) -> Result<TzOrExpanded, ParseError> {
             //Take the oposite of offset because POSIX assumes it at inverse:
             // local + offset = utc instead of utc + offset = local.
             let tmp = -std.offset.to_seconds();
-            let std_offset = UtcOffset::from_whole_seconds(tmp).map_err(ParseError::ComponentRange)?;
+            let std_offset =
+                UtcOffset::from_whole_seconds(tmp).map_err(ParseError::ComponentRange)?;
             let std = ExpandedMode {
                 name: std.name,
                 offset: std_offset,
@@ -138,8 +146,8 @@ pub fn parse_abstract(input: ParsedTz) -> Result<TzOrExpanded, ParseError> {
                     // If no offset is specified the POSIX standard defines +1 hour in standard
                     // time as default.
                     let offset = v.offset.map(|v| -v.to_seconds()).unwrap_or(tmp + 3600);
-                    let dst_offset =
-                        UtcOffset::from_whole_seconds(offset).map_err(ParseError::ComponentRange)?;
+                    let dst_offset = UtcOffset::from_whole_seconds(offset)
+                        .map_err(ParseError::ComponentRange)?;
                     let rule = match &v.rule {
                         None => None,
                         Some(v) => {
@@ -151,7 +159,7 @@ pub fn parse_abstract(input: ParsedTz) -> Result<TzOrExpanded, ParseError> {
                             let end_time = v.end.1.as_ref().map(|v| v.to_time()).unwrap_or(default);
                             Some(Rule {
                                 start: (v.start.0, start_time),
-                                end: (v.end.0, end_time)
+                                end: (v.end.0, end_time),
                             })
                         }
                     };
