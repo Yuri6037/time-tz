@@ -105,7 +105,7 @@ impl FixedTimespanSet {
         let end = if i >= self.others.len() {
             None
         } else if i == 0 {
-            Some(&self.others[i].0 + self.first.utc_offset + self.first.dst_offset)
+            Some(self.others[i].0 + self.first.utc_offset + self.first.dst_offset)
         } else {
             let (_, v) = &self.others[i - 1];
             Some(self.others[i].0 + v.utc_offset + v.dst_offset)
