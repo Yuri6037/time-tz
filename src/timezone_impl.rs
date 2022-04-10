@@ -136,6 +136,12 @@ impl TimeZone for Tz {
         }
     }
 
+    fn get_offset_primary(&self) -> Self::Offset {
+        TzOffset {
+            timespan: &self.set.first,
+        }
+    }
+
     fn name(&self) -> &str {
         self.set.name
     }
