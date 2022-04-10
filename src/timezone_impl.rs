@@ -99,8 +99,9 @@ impl FixedTimespanSet {
     fn span_local(&self, i: usize) -> Span {
         let start = match i {
             0 => None,
-            _ => Some(&self.others[i - 1])
-        }.map(|(i, v)| i + v.utc_offset + v.dst_offset);
+            _ => Some(&self.others[i - 1]),
+        }
+        .map(|(i, v)| i + v.utc_offset + v.dst_offset);
         let end = if i >= self.others.len() {
             None
         } else if i == 0 {
@@ -164,31 +165,52 @@ impl TimeZone for Tz {
 
     fn get_offset_local(&self, date_time: &OffsetDateTime) -> OffsetResult<Self::Offset> {
         let timestamp = date_time.unix_timestamp();
-        if let Some(i) = binary_search(0, self.set.len(), |i| self.set.span_local(i).cmp(timestamp)) {
+        if let Some(i) = binary_search(0, self.set.len(), |i| self.set.span_local(i).cmp(timestamp))
+        {
             return if self.set.len() == 1 {
-                OffsetResult::Some(TzOffset { timespan: &self.set[i] })
+                OffsetResult::Some(TzOffset {
+                    timespan: &self.set[i],
+                })
             } else if i == 0 && self.set.span_local(1).contains(timestamp) {
                 OffsetResult::Ambiguous(
-                    TzOffset { timespan: &self.set[0] },
-                    TzOffset { timespan: &self.set[1] }
+                    TzOffset {
+                        timespan: &self.set[0],
+                    },
+                    TzOffset {
+                        timespan: &self.set[1],
+                    },
                 )
             } else if i == 0 {
-                OffsetResult::Some(TzOffset { timespan: &self.set[0] })
+                OffsetResult::Some(TzOffset {
+                    timespan: &self.set[0],
+                })
             } else if self.set.span_local(i - 1).contains(timestamp) {
                 OffsetResult::Ambiguous(
-                    TzOffset { timespan: &self.set[i - 1] },
-                    TzOffset { timespan: &self.set[i] }
+                    TzOffset {
+                        timespan: &self.set[i - 1],
+                    },
+                    TzOffset {
+                        timespan: &self.set[i],
+                    },
                 )
             } else if i == self.set.len() - 1 {
-                OffsetResult::Some(TzOffset { timespan: &self.set[i] })
+                OffsetResult::Some(TzOffset {
+                    timespan: &self.set[i],
+                })
             } else if self.set.span_local(i + 1).contains(timestamp) {
                 OffsetResult::Ambiguous(
-                    TzOffset { timespan: &self.set[i] },
-                    TzOffset { timespan: &self.set[i + 1] }
+                    TzOffset {
+                        timespan: &self.set[i],
+                    },
+                    TzOffset {
+                        timespan: &self.set[i + 1],
+                    },
                 )
             } else {
-                OffsetResult::Some(TzOffset { timespan: &self.set[i] })
-            }
+                OffsetResult::Some(TzOffset {
+                    timespan: &self.set[i],
+                })
+            };
         }
         OffsetResult::None
     }

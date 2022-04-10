@@ -51,7 +51,7 @@ pub enum OffsetResult<T> {
     Ambiguous(T, T),
 
     /// The date time is invalid.
-    None
+    None,
 }
 
 impl<T> OffsetResult<T> {
@@ -60,7 +60,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(v) => v,
             OffsetResult::Ambiguous(_, _) => panic!("Attempt to unwrap an ambiguous offset"),
-            OffsetResult::None => panic!("Attempt to unwrap an invalid offset")
+            OffsetResult::None => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -69,7 +69,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(v) => v,
             OffsetResult::Ambiguous(v, _) => v,
-            OffsetResult::None => panic!("Attempt to unwrap an invalid offset")
+            OffsetResult::None => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -78,7 +78,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(v) => v,
             OffsetResult::Ambiguous(_, v) => v,
-            OffsetResult::None => panic!("Attempt to unwrap an invalid offset")
+            OffsetResult::None => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -87,7 +87,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(v) => Some(v),
             OffsetResult::Ambiguous(_, _) => None,
-            OffsetResult::None => None
+            OffsetResult::None => None,
         }
     }
 
@@ -96,7 +96,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(v) => Some(v),
             OffsetResult::Ambiguous(v, _) => Some(v),
-            OffsetResult::None => None
+            OffsetResult::None => None,
         }
     }
 
@@ -105,7 +105,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(v) => Some(v),
             OffsetResult::Ambiguous(_, v) => Some(v),
-            OffsetResult::None => None
+            OffsetResult::None => None,
         }
     }
 
@@ -114,7 +114,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(_) => false,
             OffsetResult::Ambiguous(_, _) => false,
-            OffsetResult::None => true
+            OffsetResult::None => true,
         }
     }
 
@@ -123,7 +123,7 @@ impl<T> OffsetResult<T> {
         match self {
             OffsetResult::Some(_) => false,
             OffsetResult::Ambiguous(_, _) => true,
-            OffsetResult::None => false
+            OffsetResult::None => false,
         }
     }
 }
@@ -182,8 +182,11 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime> {
         match tz.get_offset_local(&self.assume_utc()) {
             OffsetResult::Some(a) => OffsetResult::Some(self.assume_offset(a.to_utc())),
-            OffsetResult::Ambiguous(a, b) => OffsetResult::Ambiguous(self.assume_offset(a.to_utc()), self.assume_offset(b.to_utc())),
-            OffsetResult::None => OffsetResult::None
+            OffsetResult::Ambiguous(a, b) => OffsetResult::Ambiguous(
+                self.assume_offset(a.to_utc()),
+                self.assume_offset(b.to_utc()),
+            ),
+            OffsetResult::None => OffsetResult::None,
         }
     }
 
@@ -274,7 +277,9 @@ mod tests {
     #[test]
     fn handles_forward_changeover() {
         assert_eq!(
-            datetime!(2022-03-27 01:30).assume_timezone(timezones::db::CET).unwrap(),
+            datetime!(2022-03-27 01:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap(),
             datetime!(2022-03-27 01:30 +01:00)
         );
     }
@@ -282,25 +287,33 @@ mod tests {
     #[test]
     fn handles_after_changeover() {
         assert_eq!(
-            datetime!(2022-03-27 03:30).assume_timezone(timezones::db::CET).unwrap(),
+            datetime!(2022-03-27 03:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap(),
             datetime!(2022-03-27 03:30 +02:00)
         );
     }
 
     #[test]
     fn handles_broken_time() {
-        assert!(datetime!(2022-03-27 02:30).assume_timezone(timezones::db::CET).is_none());
+        assert!(datetime!(2022-03-27 02:30)
+            .assume_timezone(timezones::db::CET)
+            .is_none());
     }
 
     #[test]
     fn handles_backward_changeover() {
         // During backward changeover, the hour between 02:00 and 03:00 occurs twice, so either answer is correct
         assert_eq!(
-            datetime!(2022-10-30 02:30).assume_timezone(timezones::db::CET).unwrap_first(),
+            datetime!(2022-10-30 02:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap_first(),
             datetime!(2022-10-30 02:30 +02:00)
         );
         assert_eq!(
-            datetime!(2022-10-30 02:30).assume_timezone(timezones::db::CET).unwrap_second(),
+            datetime!(2022-10-30 02:30)
+                .assume_timezone(timezones::db::CET)
+                .unwrap_second(),
             datetime!(2022-10-30 02:30 +01:00)
         );
     }
