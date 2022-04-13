@@ -240,10 +240,10 @@ fn main() {
         .iter()
         .map(Path::new)
         .map(File::open)
-        .map(|v| v.expect("Failed to open one ore more tz databse file(s)"))
+        .map(|v| v.expect("Failed to open one or more tz databse file(s)"))
         .map(BufReader::new)
         .flat_map(|v| v.lines())
-        .map(|v| v.expect("Filed to read one ore more tz databse file(s)"))
+        .map(|v| v.expect("Filed to read one or more tz databse file(s)"))
         .filter_map(|mut v| {
             //Pre-filter to get rid of comment-only lines as there are a lot.
             if let Some(i) = v.find('#') {
