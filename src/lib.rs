@@ -101,8 +101,8 @@ impl OffsetDateTimeExt for OffsetDateTime {
 }
 
 mod binary_search;
-mod timezone_impl;
 mod interface;
+mod timezone_impl;
 
 #[cfg(feature = "db")]
 pub mod timezones;

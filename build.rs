@@ -38,7 +38,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
+const PARSE_FAILURE: &str = "Failed to parse one or more tz databse file(s)";
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename = "mapZone")]

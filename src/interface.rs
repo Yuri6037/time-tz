@@ -144,4 +144,3 @@ impl<T> OffsetResult<T> {
         }
     }
 }
-
