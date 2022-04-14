@@ -38,7 +38,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-const PARSE_FAILURE: &str = "Failed to parse one ore more tz databse file(s)";
+const PARSE_FAILURE: &str = "Failed to parse one or more tz databse file(s)";
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename = "mapZone")]
@@ -240,10 +240,10 @@ fn main() {
         .iter()
         .map(Path::new)
         .map(File::open)
-        .map(|v| v.expect("Failed to open one ore more tz databse file(s)"))
+        .map(|v| v.expect("Failed to open one or more tz databse file(s)"))
         .map(BufReader::new)
         .flat_map(|v| v.lines())
-        .map(|v| v.expect("Filed to read one ore more tz databse file(s)"))
+        .map(|v| v.expect("Failed to read one or more tz databse file(s)"))
         .filter_map(|mut v| {
             //Pre-filter to get rid of comment-only lines as there are a lot.
             if let Some(i) = v.find('#') {

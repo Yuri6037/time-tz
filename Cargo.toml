@@ -34,3 +34,7 @@ default = ["db"]
 system = ["windows-sys", "thiserror", "db"]
 posix-tz = ["nom", "thiserror", "db"]
 db = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

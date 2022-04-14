@@ -30,6 +30,9 @@
 //! implementation of IANA timezone database. To disable the integrated IANA/windows databases,
 //! one can simply remove the `db` default feature.
 
+// See https://doc.rust-lang.org/beta/unstable-book/language-features/doc-cfg.html & https://github.com/rust-lang/rust/pull/89596
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+
 use time::{OffsetDateTime, PrimitiveDateTime};
 
 mod sealing {
@@ -98,8 +101,8 @@ impl OffsetDateTimeExt for OffsetDateTime {
 }
 
 mod binary_search;
-mod timezone_impl;
 mod interface;
+mod timezone_impl;
 
 #[cfg(feature = "db")]
 pub mod timezones;
