@@ -1,11 +1,11 @@
 # time-tz
 An implementation of the tz database for the time-rs Rust crate.
 
+[![chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://bp3d.zulipchat.com/#narrow/stream/322108-projects.2Ftime-tz)
+
 This implementation is based off of chrono-tz (https://github.com/chronotope/chrono-tz) but uses time-rs instead
 of chrono. This is designed to replace use of chono dependency which is impacted by CVE-2020-26235
 (localtime_r thread safety issue linked to std::env::set_var).
-
-**This is currently an experimental crate.**
 
 ## Features
 
@@ -29,7 +29,6 @@ fn main()
     
     // First we have to get the source timezone:
     let london = timezones::db::europe::LONDON;
-    // The function returns None if the timezone doesn't exist.
 
     // Now we can create a primitive date time and call the extension function:
     let dt = datetime!(2016-10-8 17:0:0).assume_timezone_utc(london);
