@@ -73,9 +73,7 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                 use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
                 let mut data: DYNAMIC_TIME_ZONE_INFORMATION = std::mem::zeroed();
                 let res = GetDynamicTimeZoneInformation(&mut data as _);
-                if res == 0 {
-                    return Err(Error::Undetermined);
-                } else if res != 1 && res != 2 {
+                if res > 2 {
                     return Err(Error::Os);
                 } else {
                     let win_name_utf16 = &data.TimeZoneKeyName;
