@@ -30,8 +30,10 @@ use crate::timezones::get_by_name;
 use crate::Tz;
 use thiserror::Error;
 
-#[cfg(wasm)]
-use js_sys::{ Intl, Reflect };
+#[cfg(target_family = "wasm")]
+use js_sys::{ Intl, Reflect, Array, Object };
+#[cfg(target_family = "wasm")]
+use wasm_bindgen::JsValue;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -73,17 +75,6 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
             } else {
                 Err(Error::Undetermined)
             }
-        } else if #[cfg(wasm)] {
-            let options = Intl::DateTimeFormat::new(&Array::new(), &Object::new())
-                .resolved_options();
-
-            let tz = Reflect::get(&options, &JsValue::from("timeZone"))
-                .expect("Cannot get timeZone")
-                .as_string()
-                .expect("timeZone is not a String");
-
-            let tz = get_by_name(&tz).ok_or(Error::Unknown)?;
-            Ok(tz)
         } else if #[cfg(windows)] {
             unsafe {
                 use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
@@ -106,6 +97,17 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                     Ok(tz)
                 }
             }
+        } else if #[cfg(target_family = "wasm")] {
+            let options = Intl::DateTimeFormat::new(&Array::new(), &Object::new())
+                .resolved_options();
+
+            let tz = Reflect::get(&options, &JsValue::from("timeZone"))
+                .expect("Cannot get timeZone")
+                .as_string()
+                .expect("timeZone is not a String");
+
+            let tz = get_by_name(&tz).ok_or(Error::Unknown)?;
+            Ok(tz)
         } else {
             Err(Error::Unsupported)
         }

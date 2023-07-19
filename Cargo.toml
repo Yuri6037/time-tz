@@ -20,8 +20,9 @@ cfg-if = "1.0.0"
 thiserror = { version = "1.0.30", optional = true }
 nom = { version = "7.1.0", optional = true }
 
-[target.'cfg(wasm)'.dependencies]
+[target.'cfg(target_family = "wasm")'.dependencies]
 js-sys = { version = "0.3.64", optional = true }
+wasm-bindgen = { version = "0.2.87", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.32.0", features = ["Win32_System_Time", "Win32_Foundation"], optional = true }
@@ -34,7 +35,7 @@ serde = { version = "1.0.136", features = ["derive"] }
 
 [features]
 default = ["db"]
-system = ["windows-sys", "js-sys", "thiserror", "db"]
+system = ["windows-sys", "js-sys", "wasm-bindgen", "thiserror", "db"]
 posix-tz = ["nom", "thiserror", "db"]
 db = []
 
