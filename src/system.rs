@@ -30,6 +30,9 @@ use crate::timezones::get_by_name;
 use crate::Tz;
 use thiserror::Error;
 
+#[cfg(wasm)]
+use js_sys::{ Intl, Reflect };
+
 #[derive(Debug, Error)]
 pub enum Error {
     /// An IO error has occurred.
@@ -52,6 +55,9 @@ pub enum Error {
     /// The timezone doesn't exist in the crate's database.
     #[error("unknown timezone name")]
     Unknown,
+    
+    #[error("unsupported platform")]
+    Unsupported,
 }
 
 pub fn get_timezone() -> Result<&'static Tz, Error> {
@@ -67,7 +73,18 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
             } else {
                 Err(Error::Undetermined)
             }
-        } else {
+        } else if #[cfg(wasm)] {
+            let options = Intl::DateTimeFormat::new(&Array::new(), &Object::new())
+                .resolved_options();
+
+            let tz = Reflect::get(&options, &JsValue::from("timeZone"))
+                .expect("Cannot get timeZone")
+                .as_string()
+                .expect("timeZone is not a String");
+
+            let tz = get_by_name(&tz).ok_or(Error::Unknown)?;
+            Ok(tz)
+        } else if #[cfg(windows)] {
             unsafe {
                 use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
                 use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
@@ -89,6 +106,8 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                     Ok(tz)
                 }
             }
+        } else {
+            Err(Error::Unsupported)
         }
     }
 }
