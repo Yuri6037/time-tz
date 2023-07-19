@@ -26,6 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Support for getting time zone information from the target system.
+//! 
+//! Currently only supported for Windows, Unix, and WASM targets.
+
 use crate::timezones::get_by_name;
 use crate::Tz;
 use thiserror::Error;
@@ -63,6 +67,12 @@ pub enum Error {
     Unsupported,
 }
 
+/// Gets the current timezone from the system.
+/// 
+/// Currently only supported for Windows, Unix, and WASM targets.
+/// 
+/// # Errors
+/// Returns an [Error](enum@Error) if the timezone cannot be determined.
 pub fn get_timezone() -> Result<&'static Tz, Error> {
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
