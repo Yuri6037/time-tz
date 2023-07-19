@@ -58,6 +58,7 @@ pub enum Error {
     #[error("unknown timezone name")]
     Unknown,
     
+    /// The target platform is not supported. Windows, Unix, and WASM targets are the only supported for the system feature at this moment.
     #[error("unsupported platform")]
     Unsupported,
 }
@@ -116,7 +117,11 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(target_family = "wasm")]
+    use wasm_bindgen_test::*;
+
     #[test]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn get_timezone() {
         let tz = super::get_timezone();
         assert!(tz.is_ok());

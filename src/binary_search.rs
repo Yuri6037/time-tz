@@ -41,19 +41,27 @@ pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F)
     }
 }
 
-#[test]
-fn test_binary_search() {
-    assert_eq!(binary_search(0, 8, |x| x.cmp(&6)), Some(6));
-    assert_eq!(binary_search(0, 5000, |x| x.cmp(&1337)), Some(1337));
-    assert_eq!(binary_search(0, 5000, |x| x.cmp(&9000)), None);
-    assert_eq!(binary_search(30, 50, |x| x.cmp(&42)), Some(42));
-    assert_eq!(binary_search(300, 500, |x| x.cmp(&42)), None);
-    assert_eq!(
-        binary_search(0, 500, |x| if x < 42 {
-            Ordering::Less
-        } else {
-            Ordering::Greater
-        }),
-        None
-    );
+#[cfg(test)]
+mod tests {
+    #[cfg(target_family = "wasm")]
+    use wasm_bindgen_test::*;
+
+    #[test]
+    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
+    fn test_binary_search() {
+        assert_eq!(super::binary_search(0, 8, |x| x.cmp(&6)), Some(6));
+        assert_eq!(super::binary_search(0, 5000, |x| x.cmp(&1337)), Some(1337));
+        assert_eq!(super::binary_search(0, 5000, |x| x.cmp(&9000)), None);
+        assert_eq!(super::binary_search(30, 50, |x| x.cmp(&42)), Some(42));
+        assert_eq!(super::binary_search(300, 500, |x| x.cmp(&42)), None);
+        assert_eq!(
+            super::binary_search(0, 500, |x| if x < 42 {
+                super::Ordering::Less
+            } else {
+                super::Ordering::Greater
+            }),
+            None
+        );
+    }
+    
 }
