@@ -118,6 +118,13 @@ pub mod posix_tz;
 #[cfg(feature = "db")]
 pub use timezone_impl::Tz;
 
+#[cfg(all(target_family = "wasm", test))]
+pub mod wasm_bindgen_test_wrapper {
+    //! This module is used to wrap wasm_bindgen_test to configure testing in browser.
+    pub use wasm_bindgen_test::*;
+    wasm_bindgen_test_configure!(run_in_browser);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::timezones;
@@ -129,9 +136,7 @@ mod tests {
     use time::OffsetDateTime;
 
     #[cfg(target_family = "wasm")]
-    use wasm_bindgen_test::*;
-    #[cfg(target_family = "wasm")]
-    wasm_bindgen_test_configure!(run_in_browser);
+    use crate::wasm_bindgen_test_wrapper::*;
 
     #[test]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]

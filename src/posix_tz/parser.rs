@@ -190,9 +190,7 @@ mod tests {
     use crate::posix_tz::parser::{entry, Date, Dst, Offset, Rule, Std, Time, Tz};
 
     #[cfg(target_family = "wasm")]
-    use wasm_bindgen_test::*;
-    #[cfg(target_family = "wasm")]
-    wasm_bindgen_test_configure!(run_in_browser);
+    use crate::wasm_bindgen_test_wrapper::*;
 
     #[test]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
