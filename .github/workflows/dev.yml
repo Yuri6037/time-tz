@@ -37,13 +37,17 @@ jobs:
       - name: Build and test
         run: cargo test --all-features
   build-test-wasm:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: recursive # garbage peace of shit mother fucking github downloading broken repositories!!!!!
-          # GitLab is far better because it is not downloading broken repositories.
+          submodules: recursive
       - name: Install rustwasm
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Build and test for WASM
-        run: wasm-pack test --all-features
+      - name: Build and test for WASM - Chrome
+        run: wasm-pack test --headless --chrome --all-features
+      - name: Build and test for WASM - Firefox
+        run: wasm-pack test --headless --firefox --all-features
+      - name: Build and test for WASM - Safari
+        run: wasm-pack test --headless --safari --all-features
+  

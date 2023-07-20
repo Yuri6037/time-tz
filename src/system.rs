@@ -129,6 +129,8 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
 mod tests {
     #[cfg(target_family = "wasm")]
     use wasm_bindgen_test::*;
+    #[cfg(target_family = "wasm")]
+    wasm_bindgen_test_configure!(run_in_browser);
 
     #[test]
     #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
