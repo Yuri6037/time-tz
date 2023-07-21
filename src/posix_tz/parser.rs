@@ -189,11 +189,7 @@ pub fn entry(input: &str) -> Result<Tz> {
 mod tests {
     use crate::posix_tz::parser::{entry, Date, Dst, Offset, Rule, Std, Time, Tz};
 
-    #[cfg(target_family = "wasm")]
-    use crate::wasm_bindgen_test_wrapper::*;
-
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn basic() {
         let str = "ABC+1:00DEF,M1.2.3/4,56";
         let (_, test) = entry(str).unwrap();

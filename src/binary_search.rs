@@ -43,11 +43,7 @@ pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F)
 
 #[cfg(test)]
 mod tests {
-    #[cfg(target_family = "wasm")]
-    use crate::wasm_bindgen_test_wrapper::*;
-
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn test_binary_search() {
         assert_eq!(super::binary_search(0, 8, |x| x.cmp(&6)), Some(6));
         assert_eq!(super::binary_search(0, 5000, |x| x.cmp(&1337)), Some(1337));

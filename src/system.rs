@@ -127,11 +127,7 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(target_family = "wasm")]
-    use crate::wasm_bindgen_test_wrapper::*;
-
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn get_timezone() {
         let tz = super::get_timezone();
         assert!(tz.is_ok());

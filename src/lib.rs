@@ -118,13 +118,6 @@ pub mod posix_tz;
 #[cfg(feature = "db")]
 pub use timezone_impl::Tz;
 
-#[cfg(all(target_family = "wasm", test))]
-pub mod wasm_bindgen_test_wrapper {
-    //! This module is used to wrap wasm_bindgen_test to configure testing in browser.
-    pub use wasm_bindgen_test::*;
-    wasm_bindgen_test_configure!(run_in_browser);
-}
-
 #[cfg(test)]
 mod tests {
     use crate::timezones;
@@ -135,11 +128,7 @@ mod tests {
     use time::macros::{datetime, offset};
     use time::OffsetDateTime;
 
-    #[cfg(target_family = "wasm")]
-    use crate::wasm_bindgen_test_wrapper::*;
-
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn names() {
         //This test verifies that windows timezone names work fine.
         let shanghai = timezones::get_by_name("Asia/Shanghai");
@@ -150,7 +139,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn find() {
         let zones_iana = timezones::find_by_name("Asia");
         //let zones_win = timezones::find_by_name("China Standard Time");
@@ -159,7 +147,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn offsets_and_name() {
         let tz = timezones::db::europe::LONDON;
         assert_eq!(tz.name(), "Europe/London");
@@ -168,7 +155,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn london_to_berlin() {
         let dt = datetime!(2016-10-8 17:0:0).assume_timezone_utc(timezones::db::europe::LONDON);
         let converted = dt.to_timezone(timezones::db::europe::BERLIN);
@@ -178,7 +164,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn dst() {
         let london = timezones::db::europe::LONDON;
         let odt1 = datetime!(2021-01-01 12:0:0 UTC);
@@ -193,7 +178,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn handles_forward_changeover() {
         assert_eq!(
             datetime!(2022-03-27 01:30)
@@ -204,7 +188,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn handles_after_changeover() {
         assert_eq!(
             datetime!(2022-03-27 03:30)
@@ -215,7 +198,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn handles_broken_time() {
         assert!(datetime!(2022-03-27 02:30)
             .assume_timezone(timezones::db::CET)
@@ -223,7 +205,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_family = "wasm", wasm_bindgen_test)]
     fn handles_backward_changeover() {
         // During backward changeover, the hour between 02:00 and 03:00 occurs twice, so either answer is correct
         assert_eq!(
