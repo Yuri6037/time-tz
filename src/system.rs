@@ -113,9 +113,9 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                 .resolved_options();
 
             let tz = Reflect::get(&options, &JsValue::from("timeZone"))
-                .expect("Cannot get timeZone")
+                .map_err(|_| Error::Undetermined)?
                 .as_string()
-                .expect("timeZone is not a String");
+                .ok_or(Error::Unicode)?;
 
             let tz = get_by_name(&tz).ok_or(Error::Unknown)?;
             Ok(tz)
