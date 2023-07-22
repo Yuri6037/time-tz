@@ -26,9 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Support for getting time zone information from the target system.
+//! 
+//! Currently only supported for Windows, Unix, and WASM targets.
+
 use crate::timezones::get_by_name;
 use crate::Tz;
 use thiserror::Error;
+
+#[cfg(target_family = "wasm")]
+use js_sys::{ Intl, Reflect, Array, Object };
+#[cfg(target_family = "wasm")]
+use wasm_bindgen::JsValue;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -52,8 +61,18 @@ pub enum Error {
     /// The timezone doesn't exist in the crate's database.
     #[error("unknown timezone name")]
     Unknown,
+    
+    /// The target platform is not supported. Windows, Unix, and WASM targets are the only supported for the system feature at this moment.
+    #[error("unsupported platform")]
+    Unsupported,
 }
 
+/// Gets the current timezone from the system.
+/// 
+/// Currently only supported for Windows, Unix, and WASM targets.
+/// 
+/// # Errors
+/// Returns an [Error](enum@Error) if the timezone cannot be determined.
 pub fn get_timezone() -> Result<&'static Tz, Error> {
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
@@ -67,7 +86,7 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
             } else {
                 Err(Error::Undetermined)
             }
-        } else {
+        } else if #[cfg(windows)] {
             unsafe {
                 use windows_sys::Win32::System::Time::GetDynamicTimeZoneInformation;
                 use windows_sys::Win32::System::Time::DYNAMIC_TIME_ZONE_INFORMATION;
@@ -89,6 +108,19 @@ pub fn get_timezone() -> Result<&'static Tz, Error> {
                     Ok(tz)
                 }
             }
+        } else if #[cfg(target_family = "wasm")] {
+            let options = Intl::DateTimeFormat::new(&Array::new(), &Object::new())
+                .resolved_options();
+
+            let tz = Reflect::get(&options, &JsValue::from("timeZone"))
+                .map_err(|_| Error::Undetermined)?
+                .as_string()
+                .ok_or(Error::Unicode)?;
+
+            let tz = get_by_name(&tz).ok_or(Error::Unknown)?;
+            Ok(tz)
+        } else {
+            Err(Error::Unsupported)
         }
     }
 }

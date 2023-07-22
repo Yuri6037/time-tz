@@ -60,7 +60,7 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     ///
     /// * `tz`: the target timezone.
     ///
-    /// returns: OffsetResult<OffsetDateTime>
+    /// returns: `OffsetResult<OffsetDateTime>`
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime>;
 
     /// Creates a new OffsetDateTime with the proper offset in the given timezone.
