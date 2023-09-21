@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -77,6 +77,9 @@ fn parse_win_cldr_db() -> phf_codegen::Map<String> {
         let mut str = String::new();
         let mut split = zone_name_statics.split(' ').peekable();
         while let Some(item) = split.next() {
+            if item.trim().is_empty() {
+                continue;
+            }    
             str += "&internal_tz_new(&";
             str += item;
             str.push(')');
