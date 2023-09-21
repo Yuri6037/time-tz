@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -35,6 +35,9 @@
 
 use time::{OffsetDateTime, PrimitiveDateTime};
 
+mod zoned;
+pub use zoned::ZonedDateTime;
+
 mod sealing {
     pub trait OffsetDateTimeExt {}
     pub trait PrimitiveDateTimeExt {}
@@ -45,16 +48,26 @@ mod sealing {
 
 // This trait is sealed and is only implemented in this library.
 pub trait OffsetDateTimeExt: sealing::OffsetDateTimeExt {
-    /// Converts this OffsetDateTime to a different TimeZone.
+    /// Converts this [OffsetDateTime](time::OffsetDateTime) to a different [TimeZone](crate::TimeZone).
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+
+    /// Converts this [OffsetDateTime](time::OffsetDateTime) to UTC.
+    fn to_utc(&self) -> OffsetDateTime;
+
+    /// Creates a new [ZonedDateTime](crate::ZonedDateTime) from this [OffsetDateTime](time::OffsetDateTime).
+    ///
+    /// # Arguments
+    ///
+    /// * `tz`: the target timezone.
+    fn to_zoned_date_time<'a, T: TimeZone>(&self, tz: &'a T) -> ZonedDateTime<'a, T>;
 }
 
 /// This trait is sealed and is only implemented in this library.
 pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
-    /// Creates a new OffsetDateTime from a PrimitiveDateTime by assigning the main offset of the
+    /// Creates a new [OffsetDateTime](time::OffsetDateTime) from a [PrimitiveDateTime](time::PrimitiveDateTime) by assigning the main offset of the
     /// target timezone.
     ///
-    /// *This assumes the PrimitiveDateTime is already in the target timezone.*
+    /// *This assumes the [PrimitiveDateTime](time::PrimitiveDateTime) is already in the target timezone.*
     ///
     /// # Arguments
     ///
@@ -63,9 +76,9 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     /// returns: `OffsetResult<OffsetDateTime>`
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime>;
 
-    /// Creates a new OffsetDateTime with the proper offset in the given timezone.
+    /// Creates a new [OffsetDateTime](time::OffsetDateTime) with the proper offset in the given timezone.
     ///
-    /// *This assumes the PrimitiveDateTime is in UTC offset.*
+    /// *This assumes the [PrimitiveDateTime](time::PrimitiveDateTime) is in UTC offset.*
     ///
     /// # Arguments
     ///
@@ -73,6 +86,15 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     ///
     /// returns: OffsetDateTime
     fn assume_timezone_utc<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
+
+    /// Creates a new [ZonedDateTime](crate::ZonedDateTime) from this [PrimitiveDateTime](time::PrimitiveDateTime).
+    ///
+    /// *This assumes the [PrimitiveDateTime](time::PrimitiveDateTime) is already in the target timezone.*
+    ///
+    /// # Arguments
+    ///
+    /// * `tz`: the target timezone.
+    fn to_zoned_date_time<'a, T: TimeZone>(self, tz: &'a T) -> ZonedDateTime<'a, T>;
 }
 
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
@@ -91,12 +113,29 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
         let offset = tz.get_offset_utc(&self.assume_utc());
         self.assume_offset(offset.to_utc())
     }
+
+    fn to_zoned_date_time<'a, T: TimeZone>(self, tz: &'a T) -> ZonedDateTime<'a, T> {
+        ZonedDateTime::new(self, tz)
+    }
 }
 
 impl OffsetDateTimeExt for OffsetDateTime {
     fn to_timezone<T: TimeZone>(&self, tz: &T) -> OffsetDateTime {
         let offset = tz.get_offset_utc(self);
         self.to_offset(offset.to_utc())
+    }
+
+    fn to_utc(&self) -> OffsetDateTime {
+        if self.offset().is_utc() {
+            *self
+        } else {
+            self.to_timezone(timezones::db::UTC)
+        }
+    }
+
+    fn to_zoned_date_time<'a, T: TimeZone>(&self, tz: &'a T) -> ZonedDateTime<'a, T> {
+        let utc = self.to_utc();
+        ZonedDateTime::new(PrimitiveDateTime::new(utc.date(), utc.time()), tz)
     }
 }
 
@@ -218,6 +257,27 @@ mod tests {
                 .assume_timezone(timezones::db::CET)
                 .unwrap_second(),
             datetime!(2022-10-30 02:30 +01:00)
+        );
+    }
+
+    #[test]
+    fn handles_replace_time_in_timezone_from_primitive() {
+        assert_eq!(
+            datetime!(2023-03-26 0:00)
+                .assume_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first(),
+            datetime!(2023-03-25 23:00 UTC)
+        );
+    }
+
+    #[test]
+    fn handles_replace_time_in_timezone() {
+        assert_eq!(
+            datetime!(2023-03-26 6:00 UTC)
+                .to_zoned_date_time(timezones::db::europe::STOCKHOLM)
+                .replace_time(time::Time::MIDNIGHT)
+                .to_offset_date_time().unwrap_first(),
+            datetime!(2023-03-25 23:00 UTC)
         );
     }
 }

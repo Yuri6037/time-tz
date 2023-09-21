@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -141,6 +141,15 @@ impl<T> OffsetResult<T> {
             OffsetResult::Some(_) => false,
             OffsetResult::Ambiguous(_, _) => true,
             OffsetResult::None => false,
+        }
+    }
+
+    /// Maps this OffsetResult to a different result type.
+    pub fn map<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetResult<R> {
+        match self {
+            OffsetResult::Some(a) => OffsetResult::Some(f(a)),
+            OffsetResult::Ambiguous(a, b) => OffsetResult::Ambiguous(f(a), f(b)),
+            OffsetResult::None => OffsetResult::None,
         }
     }
 }
