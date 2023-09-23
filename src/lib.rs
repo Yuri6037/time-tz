@@ -37,6 +37,7 @@ use time::{OffsetDateTime, PrimitiveDateTime};
 
 mod zoned;
 pub use zoned::ZonedDateTime;
+pub use zoned::ComponentDuration;
 
 mod sealing {
     pub trait OffsetDateTimeExt {}
@@ -59,7 +60,7 @@ pub trait OffsetDateTimeExt: sealing::OffsetDateTimeExt {
     /// # Arguments
     ///
     /// * `tz`: the target timezone.
-    fn to_zoned_date_time<'a, T: TimeZone>(&self, tz: &'a T) -> ZonedDateTime<'a, T>;
+    fn with_timezone<'a, T: TimeZone>(&self, tz: &'a T) -> ZonedDateTime<'a, T>;
 }
 
 /// This trait is sealed and is only implemented in this library.
@@ -94,7 +95,7 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     /// # Arguments
     ///
     /// * `tz`: the target timezone.
-    fn to_zoned_date_time<'a, T: TimeZone>(self, tz: &'a T) -> ZonedDateTime<'a, T>;
+    fn with_timezone<'a, T: TimeZone>(self, tz: &'a T) -> OffsetResult<ZonedDateTime<'a, T>>;
 }
 
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
@@ -114,8 +115,8 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
         self.assume_offset(offset.to_utc())
     }
 
-    fn to_zoned_date_time<'a, T: TimeZone>(self, tz: &'a T) -> ZonedDateTime<'a, T> {
-        ZonedDateTime::new(self, tz)
+    fn with_timezone<'a, T: TimeZone>(self, tz: &'a T) -> OffsetResult<ZonedDateTime<'a, T>> {
+        ZonedDateTime::from_local(self, tz)
     }
 }
 
@@ -133,9 +134,8 @@ impl OffsetDateTimeExt for OffsetDateTime {
         }
     }
 
-    fn to_zoned_date_time<'a, T: TimeZone>(&self, tz: &'a T) -> ZonedDateTime<'a, T> {
-        let utc = self.to_utc();
-        ZonedDateTime::new(PrimitiveDateTime::new(utc.date(), utc.time()), tz)
+    fn with_timezone<'a, T: TimeZone>(&self, tz: &'a T) -> ZonedDateTime<'a, T> {
+        ZonedDateTime::from_utc(self.to_utc(), tz)
     }
 }
 
@@ -164,6 +164,7 @@ mod tests {
     use crate::OffsetDateTimeExt;
     use crate::PrimitiveDateTimeExt;
     use crate::TimeZone;
+    use crate::ComponentDuration;
     use time::macros::{datetime, offset};
     use time::OffsetDateTime;
 
@@ -274,10 +275,42 @@ mod tests {
     fn handles_replace_time_in_timezone() {
         assert_eq!(
             datetime!(2023-03-26 6:00 UTC)
-                .to_zoned_date_time(timezones::db::europe::STOCKHOLM)
-                .replace_time(time::Time::MIDNIGHT)
-                .to_offset_date_time().unwrap_first(),
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .replace_time(time::Time::MIDNIGHT).unwrap_first()
+                .offset_date_time(),
             datetime!(2023-03-25 23:00 UTC)
+        );
+    }
+
+    #[test]
+    fn zoned_date_time_add_duration() {
+        assert_eq!(
+            (datetime!(2023-01-01 22:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + ComponentDuration::days(1))
+                .offset_date_time(),
+            datetime!(2023-01-02 22:00).with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first().offset_date_time()
+        );
+        assert_eq!(
+            (datetime!(2023-03-25 22:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + ComponentDuration::days(1))
+                .offset_date_time(),
+            datetime!(2023-03-26 22:00).with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first().offset_date_time()
+        );
+        assert_eq!(
+            (datetime!(2023-03-25 22:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + ComponentDuration::hours(24))
+                .offset_date_time(),
+            datetime!(2023-03-26 23:00).with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first().offset_date_time()
+        );
+        assert_eq!(
+            (datetime!(2023-03-26 1:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + ComponentDuration::hours(1))
+                .offset_date_time(),
+            datetime!(2023-03-26 3:00).with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first().offset_date_time()
         );
     }
 }
