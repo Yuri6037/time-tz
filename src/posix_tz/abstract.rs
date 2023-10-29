@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -29,8 +29,7 @@
 use crate::posix_tz::intermediate::ParsedTz;
 use crate::posix_tz::parser::Date;
 use crate::posix_tz::{Error, ParseError};
-use crate::timezone_impl::TzOffset;
-use crate::Tz;
+use crate::timezone_impl::{Tz, TzOffset};
 use time::{OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
 
 pub enum TzOrExpandedOffset<'a> {

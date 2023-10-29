@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -26,12 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::ToTimezone;
 use crate::timezone_impl::internal_tz_new;
 use crate::timezone_impl::FixedTimespan;
 use crate::timezone_impl::FixedTimespanSet;
 
-use crate::Tz;
+use crate::timezone_impl::Tz;
 use phf::Map;
+use time::OffsetDateTime;
 
 include!(concat!(env!("OUT_DIR"), "/timezones.rs"));
 
@@ -56,5 +58,14 @@ pub fn get_by_name(name: &str) -> Option<&'static Tz> {
         list.get(0).copied()
     } else {
         TIMEZONES.get(name).copied()
+    }
+}
+
+impl ToTimezone<&str> for OffsetDateTime {
+    type Out = Option<OffsetDateTime>;
+
+    fn to_timezone(&self, tz: &str) -> Self::Out {
+        let tz = get_by_name(tz)?;
+        Some(self.to_timezone(tz))
     }
 }

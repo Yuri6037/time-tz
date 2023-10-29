@@ -28,9 +28,9 @@
 
 use std::ops::{Add, Sub};
 
-use time::{UtcOffset, PrimitiveDateTime, OffsetDateTime, Date, Time, Duration};
+use time::{UtcOffset, PrimitiveDateTime, OffsetDateTime, Date, Time};
 
-use crate::{TimeZone, OffsetResult, PrimitiveDateTimeExt, OffsetDateTimeExt};
+use crate::{TimeZone, OffsetResult, PrimitiveDateTimeExt, ToTimezone};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct ZonedDateTime<'a, T: TimeZone> {
@@ -99,71 +99,67 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ComponentDuration {
-    Date(Duration),
-    Time(Duration)
+pub enum Duration {
+    Date(time::Duration),
+    Time(time::Duration)
 }
 
-impl From<Duration> for ComponentDuration {
-    fn from(value: Duration) -> Self {
-        ComponentDuration::Time(value)
+impl From<time::Duration> for Duration {
+    fn from(value: time::Duration) -> Self {
+        Duration::Time(value)
     }
 }
 
-impl ComponentDuration {
-    /// Create a new `ComponentDuration` with the given number of weeks. Equivalent to
-    /// `ComponentDuration::seconds(weeks * 604_800)`.
+impl Duration {
+    /// Create a new `Duration` with the given number of weeks.
     pub const fn weeks(weeks: i64) -> Self {
-        Self::Date(Duration::weeks(weeks))
+        Self::Date(time::Duration::weeks(weeks))
     }
 
-    /// Create a new `ComponentDuration` with the given number of days. Equivalent to
-    /// `ComponentDuration::seconds(days * 86_400)`.
+    /// Create a new `Duration` with the given number of days.
     pub const fn days(days: i64) -> Self {
-        Self::Date(Duration::days(days))
+        Self::Date(time::Duration::days(days))
     }
 
-    /// Create a new `ComponentDuration` with the given number of hours. Equivalent to
-    /// `ComponentDuration::seconds(hours * 3_600)`.
+    /// Create a new `Duration` with the given number of hours.
     pub const fn hours(hours: i64) -> Self {
-        Self::Time(Duration::hours(hours))
+        Self::Time(time::Duration::hours(hours))
     }
 
-    /// Create a new `ComponentDuration` with the given number of minutes. Equivalent to
-    /// `ComponentDuration::seconds(minutes * 60)`.
+    /// Create a new `Duration` with the given number of minutes.
     pub const fn minutes(minutes: i64) -> Self {
-        Self::Time(Duration::minutes(minutes))
+        Self::Time(time::Duration::minutes(minutes))
     }
 
-    /// Create a new `ComponentDuration` with the given number of seconds.
+    /// Create a new `Duration` with the given number of seconds.
     pub const fn seconds(seconds: i64) -> Self {
-        ComponentDuration::Time(Duration::seconds(seconds))
+        Self::Time(time::Duration::seconds(seconds))
     }
 }
 
-impl<'a, T: TimeZone> Add<ComponentDuration> for ZonedDateTime<'a, T> {
+impl<'a, T: TimeZone> Add<Duration> for ZonedDateTime<'a, T> {
     type Output = ZonedDateTime<'a, T>;
 
-    fn add(self, rhs: ComponentDuration) -> Self::Output {
+    fn add(self, rhs: Duration) -> Self::Output {
         match rhs {
-            ComponentDuration::Date(v) => ZonedDateTime::from_local_offset(self.date_time + v, self.timezone).unwrap_first(),
-            ComponentDuration::Time(v) => {
+            Duration::Date(v) => ZonedDateTime::from_local_offset(self.date_time + v, self.timezone).unwrap_first(),
+            Duration::Time(v) => {
                 let offset = self.offset();
-                ZonedDateTime::from_local_offset(self.date_time + v + Duration::seconds(offset.whole_seconds() as _), self.timezone).unwrap_first()
+                ZonedDateTime::from_local_offset(self.date_time + v + time::Duration::seconds(offset.whole_seconds() as _), self.timezone).unwrap_first()
             }
         }
     }
 }
 
-impl<'a, T: TimeZone> Sub<ComponentDuration> for ZonedDateTime<'a, T> {
+impl<'a, T: TimeZone> Sub<Duration> for ZonedDateTime<'a, T> {
     type Output = ZonedDateTime<'a, T>;
 
-    fn sub(self, rhs: ComponentDuration) -> Self::Output {
+    fn sub(self, rhs: Duration) -> Self::Output {
         match rhs {
-            ComponentDuration::Date(v) => ZonedDateTime::from_local_offset(self.date_time - v, self.timezone).unwrap_first(),
-            ComponentDuration::Time(v) => {
+            Duration::Date(v) => ZonedDateTime::from_local_offset(self.date_time - v, self.timezone).unwrap_first(),
+            Duration::Time(v) => {
                 let offset = self.offset();
-                ZonedDateTime::from_local_offset(self.date_time - v - Duration::seconds(offset.whole_seconds() as _), self.timezone).unwrap_first()
+                ZonedDateTime::from_local_offset(self.date_time - v - time::Duration::seconds(offset.whole_seconds() as _), self.timezone).unwrap_first()
             }
         }
     }

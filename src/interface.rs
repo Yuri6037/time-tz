@@ -28,6 +28,15 @@
 
 use time::{OffsetDateTime, UtcOffset};
 
+/// This trait allows conversions from one timezone to another.
+pub trait ToTimezone<T> {
+    /// The output type.
+    type Out;
+
+    /// Converts self to a different timezone.
+    fn to_timezone(&self, tz: T) -> Self::Out;
+}
+
 /// This trait represents a particular timezone offset.
 pub trait Offset {
     /// Converts this timezone offset to a [UtcOffset](time::UtcOffset).

@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -31,7 +31,7 @@
 //! Currently only supported for Windows, Unix, and WASM targets.
 
 use crate::timezones::get_by_name;
-use crate::Tz;
+use crate::timezone_impl::Tz;
 use thiserror::Error;
 
 #[cfg(target_family = "wasm")]

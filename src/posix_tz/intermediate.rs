@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -149,7 +149,7 @@ impl<'a> Tz<'a> {
 }
 
 pub enum ParsedTz<'a> {
-    Existing(&'static crate::Tz),
+    Existing(&'static crate::timezone_impl::Tz),
     Expanded((Std<'a>, Option<Dst<'a>>)),
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "time-tz"
-version = "2.1.0-rc.1.0.0"
+version = "3.0.0-rc.1.0.0"
 edition = "2021"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 description = "Implementation of tz database (IANA) for the time Rust crate."
@@ -42,6 +42,7 @@ default = ["db"]
 system = ["windows-sys", "js-sys", "thiserror", "db"]
 posix-tz = ["nom", "thiserror", "db"]
 db = []
+db_impl = []
 
 [package.metadata.docs.rs]
 all-features = true

@@ -151,7 +151,7 @@ fn intermal_write_module_tree(
 ) -> std::io::Result<()> {
     writeln!(file, "pub mod {} {{", tree.name.to_lowercase())?;
     for zone in &tree.items {
-        writeln!(file, "pub const {}: &crate::Tz = &crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
+        writeln!(file, "pub const {}: &crate::timezone_impl::Tz = &crate::timezone_impl::internal_tz_new(&crate::timezones::{});", zone.name
             .to_uppercase()
             .replace('-', "_")
             .replace('+', "_PLUS_"), zone.name_static)?;

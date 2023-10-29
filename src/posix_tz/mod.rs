@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Yuri6037
+// Copyright (c) 2023, Yuri6037
 //
 // All rights reserved.
 //
@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Offset, TimeZone, Tz};
+use crate::{Offset, TimeZone, timezone_impl::Tz, ToTimezone};
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
 use time::{OffsetDateTime, UtcOffset};
@@ -202,5 +202,13 @@ impl<'a> PosixTz<'a> {
             r#abstract::TzOrExpanded::Tz(v) => Some(*v),
             r#abstract::TzOrExpanded::Expanded(_) => None,
         }
+    }
+}
+
+impl<'a> ToTimezone<&PosixTz<'a>> for OffsetDateTime {
+    type Out = Result<OffsetDateTime, Error>;
+
+    fn to_timezone(&self, tz: &PosixTz) -> Self::Out {
+        tz.convert(self)
     }
 }
