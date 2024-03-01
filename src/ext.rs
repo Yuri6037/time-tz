@@ -28,22 +28,26 @@
 
 use time::{OffsetDateTime, PrimitiveDateTime};
 
-use crate::{TimeZone, zoned, OffsetResult, Offset, timezones, ToTimezone};
+use crate::{TimeZone, zoned, OffsetResult, Offset, timezones, ToTimezone, OffsetError};
 
 mod sealing {
+    use crate::OffsetResult;
+
     pub trait OffsetDateTimeExt {}
     pub trait PrimitiveDateTimeExt {}
+    pub trait OffsetResultExt {}
 
     impl OffsetDateTimeExt for time::OffsetDateTime {}
     impl PrimitiveDateTimeExt for time::PrimitiveDateTime {}
+    impl<T> OffsetResultExt for OffsetResult<T> {}
 }
 
 // This trait is sealed and is only implemented in this library.
 pub trait OffsetDateTimeExt: sealing::OffsetDateTimeExt {
-    /// Converts this [OffsetDateTime](time::OffsetDateTime) to UTC.
+    /// Converts this [OffsetDateTime](OffsetDateTime) to UTC.
     fn to_utc(&self) -> OffsetDateTime;
 
-    /// Creates a new [ZonedDateTime](crate::ZonedDateTime) from this [OffsetDateTime](time::OffsetDateTime).
+    /// Creates a new [ZonedDateTime](crate::ZonedDateTime) from this [OffsetDateTime](OffsetDateTime).
     ///
     /// # Arguments
     ///
@@ -53,10 +57,10 @@ pub trait OffsetDateTimeExt: sealing::OffsetDateTimeExt {
 
 /// This trait is sealed and is only implemented in this library.
 pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
-    /// Creates a new [OffsetDateTime](time::OffsetDateTime) from a [PrimitiveDateTime](time::PrimitiveDateTime) by assigning the main offset of the
+    /// Creates a new [OffsetDateTime](OffsetDateTime) from a [PrimitiveDateTime](PrimitiveDateTime) by assigning the main offset of the
     /// target timezone.
     ///
-    /// *This assumes the [PrimitiveDateTime](time::PrimitiveDateTime) is already in the target timezone.*
+    /// *This assumes the [PrimitiveDateTime](PrimitiveDateTime) is already in the target timezone.*
     ///
     /// # Arguments
     ///
@@ -65,9 +69,9 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     /// returns: `OffsetResult<OffsetDateTime>`
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime>;
 
-    /// Creates a new [OffsetDateTime](time::OffsetDateTime) with the proper offset in the given timezone.
+    /// Creates a new [OffsetDateTime](OffsetDateTime) with the proper offset in the given timezone.
     ///
-    /// *This assumes the [PrimitiveDateTime](time::PrimitiveDateTime) is in UTC offset.*
+    /// *This assumes the [PrimitiveDateTime](PrimitiveDateTime) is in UTC offset.*
     ///
     /// # Arguments
     ///
@@ -76,25 +80,55 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     /// returns: OffsetDateTime
     fn assume_timezone_utc<T: TimeZone>(&self, tz: &T) -> OffsetDateTime;
 
-    /// Creates a new [ZonedDateTime](crate::ZonedDateTime) from this [PrimitiveDateTime](time::PrimitiveDateTime).
+    /// Creates a new [ZonedDateTime](crate::ZonedDateTime) from this [PrimitiveDateTime](PrimitiveDateTime).
     ///
-    /// *This assumes the [PrimitiveDateTime](time::PrimitiveDateTime) is already in the target timezone.*
+    /// *This assumes the [PrimitiveDateTime](PrimitiveDateTime) is already in the target timezone.*
     ///
     /// # Arguments
     ///
     /// * `tz`: the target timezone.
-    fn with_timezone<'a, T: TimeZone>(self, tz: &'a T) -> OffsetResult<zoned::ZonedDateTime<'a, T>>;
+    fn with_timezone<T: TimeZone>(self, tz: &T) -> OffsetResult<zoned::ZonedDateTime<T>>;
+}
+
+pub trait OffsetResultExt<T>: sealing::OffsetResultExt {
+    /// Maps this [OffsetResult] to a different result type.
+    fn map_all<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetResult<R>;
+
+    /// Unwraps this [OffsetResult] resolving ambiguity by taking the first result.
+    fn unwrap_first(self) -> T;
+
+    /// Unwraps this [OffsetResult] resolving ambiguity by taking the second result.
+    fn unwrap_second(self) -> T;
+
+    /// Turns this [OffsetResult] into an Option resolving ambiguity by taking the first result.
+    fn take_first(self) -> Option<T>;
+
+    /// Turns this [OffsetResult] into an Option resolving ambiguity by taking the second result.
+    fn take_second(self) -> Option<T>;
+
+    /// Returns true if this [OffsetResult] is neither ambiguous nor undefined.
+    fn is_some(&self) -> bool;
+
+    /// Returns true if this [OffsetResult] is None.
+    fn is_none(&self) -> bool;
+
+    /// Returns true if this [OffsetResult] is ambiguous.
+    fn is_ambiguous(&self) -> bool;
 }
 
 impl PrimitiveDateTimeExt for PrimitiveDateTime {
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime> {
         match tz.get_offset_local(&self.assume_utc()) {
-            OffsetResult::Some(a) => OffsetResult::Some(self.assume_offset(a.to_utc())),
-            OffsetResult::Ambiguous(a, b) => OffsetResult::Ambiguous(
-                self.assume_offset(a.to_utc()),
-                self.assume_offset(b.to_utc()),
-            ),
-            OffsetResult::None => OffsetResult::None,
+            Ok(a) => Ok(self.assume_offset(a.to_utc())),
+            Err(e) => {
+                match e {
+                    OffsetError::Ambiguous(a, b) => Err(OffsetError::Ambiguous(
+                        self.assume_offset(a.to_utc()),
+                        self.assume_offset(b.to_utc())
+                    )),
+                    OffsetError::None => Err(OffsetError::None)
+                }
+            }
         }
     }
 
@@ -103,7 +137,7 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
         self.assume_offset(offset.to_utc())
     }
 
-    fn with_timezone<'a, T: TimeZone>(self, tz: &'a T) -> OffsetResult<zoned::ZonedDateTime<'a, T>> {
+    fn with_timezone<T: TimeZone>(self, tz: &T) -> OffsetResult<zoned::ZonedDateTime<T>> {
         zoned::ZonedDateTime::from_local(self, tz)
     }
 }
@@ -134,5 +168,54 @@ impl<T: TimeZone> ToTimezone<&T> for OffsetDateTime {
     fn checked_to_timezone(&self, tz: &T) -> Self::CheckedOut {
         let offset = tz.get_offset_utc(self);
         self.checked_to_offset(offset.to_utc())
+    }
+}
+
+impl<T> OffsetResultExt<T> for OffsetResult<T> {
+    fn map_all<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetResult<R> {
+        match self {
+            Ok(a) => Ok(f(a)),
+            Err(e) => Err(e.map(f))
+        }
+    }
+
+    fn unwrap_first(self) -> T {
+        self.unwrap_or_else(|e| e.unwrap_first())
+    }
+
+    fn unwrap_second(self) -> T {
+        self.unwrap_or_else(|e| e.unwrap_second())
+    }
+
+    fn take_first(self) -> Option<T> {
+        match self {
+            Ok(a) => Some(a),
+            Err(e) => e.take_first()
+        }
+    }
+
+    fn take_second(self) -> Option<T> {
+        match self {
+            Ok(a) => Some(a),
+            Err(e) => e.take_second()
+        }
+    }
+
+    fn is_some(&self) -> bool {
+        self.is_ok()
+    }
+
+    fn is_none(&self) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => e.is_none()
+        }
+    }
+
+    fn is_ambiguous(&self) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => e.is_ambiguous()
+        }
     }
 }

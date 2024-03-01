@@ -80,6 +80,76 @@ pub trait TimeZone {
 
 /// This represents the possible types of errors when trying to find a local offset.
 #[derive(Clone, Copy, Debug)]
+pub enum OffsetError<T> {
+    /// The date time is ambiguous (2 are possible).
+    Ambiguous(T, T),
+
+    /// The date time is invalid.
+    None
+}
+
+impl<T> OffsetError<T> {
+    /// Returns true if this [OffsetError] is None.
+    pub fn is_none(&self) -> bool {
+        match self {
+            OffsetError::Ambiguous(_, _) => false,
+            OffsetError::None => true
+        }
+    }
+
+    /// Returns true if this [OffsetError] is ambiguous.
+    pub fn is_ambiguous(&self) -> bool {
+        match self {
+            OffsetError::Ambiguous(_, _) => true,
+            OffsetError::None => false
+        }
+    }
+
+    /// Unwraps this [OffsetError] resolving ambiguity by taking the first result.
+    pub fn unwrap_first(self) -> T {
+        match self {
+            OffsetError::Ambiguous(a, _) => a,
+            OffsetError::None => panic!("Attempt to unwrap an invalid offset")
+        }
+    }
+
+    /// Unwraps this [OffsetError] resolving ambiguity by taking the second result.
+    pub fn unwrap_second(self) -> T {
+        match self {
+            OffsetError::Ambiguous(_, b) => b,
+            OffsetError::None => panic!("Attempt to unwrap an invalid offset")
+        }
+    }
+
+    /// Turns this [OffsetError] into an Option resolving ambiguity by taking the first result.
+    pub fn take_first(self) -> Option<T> {
+        match self {
+            OffsetError::Ambiguous(a, _) => Some(a),
+            OffsetError::None => None
+        }
+    }
+
+    /// Turns this [OffsetError] into an Option resolving ambiguity by taking the second result.
+    pub fn take_second(self) -> Option<T> {
+        match self {
+            OffsetError::Ambiguous(_, b) => Some(b),
+            OffsetError::None => None
+        }
+    }
+
+    /// Maps this [OffsetError] to a different result type.
+    pub fn map<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetError<R> {
+        match self {
+            OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(f(a), f(b)),
+            OffsetError::None => OffsetError::None
+        }
+    }
+}
+
+pub type OffsetResult<T> = Result<T, OffsetError<T>>;
+
+/*/// This represents the possible types of errors when trying to find a local offset.
+#[derive(Clone, Copy, Debug)]
 pub enum OffsetResult<T> {
     /// The date time is not ambiguous (exactly 1 is possible).
     Some(T),
@@ -172,4 +242,4 @@ impl<T> OffsetResult<T> {
             OffsetResult::None => OffsetResult::None,
         }
     }
-}
+}*/

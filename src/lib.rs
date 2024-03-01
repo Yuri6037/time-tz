@@ -57,7 +57,7 @@ pub use timezone_impl::Tz;
 
 #[cfg(test)]
 mod tests {
-    use crate::ToTimezone;
+    use crate::{OffsetResultExt, ToTimezone};
     use crate::timezones;
     use crate::Offset;
     use crate::OffsetDateTimeExt;

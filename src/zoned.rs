@@ -30,7 +30,7 @@ use std::ops::{Add, Sub};
 
 use time::{UtcOffset, PrimitiveDateTime, OffsetDateTime, Date, Time};
 
-use crate::{TimeZone, OffsetResult, PrimitiveDateTimeExt, ToTimezone};
+use crate::{TimeZone, OffsetResult, PrimitiveDateTimeExt, ToTimezone, OffsetResultExt};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct ZonedDateTime<'a, T: TimeZone> {
@@ -40,7 +40,7 @@ pub struct ZonedDateTime<'a, T: TimeZone> {
 
 impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
     pub fn from_local(date_time: PrimitiveDateTime, timezone: &'a T) -> OffsetResult<ZonedDateTime<'a, T>> {
-        date_time.assume_timezone(timezone).map(|v| ZonedDateTime { date_time: *v, timezone })
+        date_time.assume_timezone(timezone).map_all(|v| ZonedDateTime { date_time: *v, timezone })
     }
 
     pub fn from_utc(date_time: OffsetDateTime, timezone: &'a T) -> ZonedDateTime<'a, T> {
@@ -51,7 +51,7 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
     fn from_local_offset(date_time: OffsetDateTime, timezone: &'a T) -> OffsetResult<ZonedDateTime<'a, T>> {
         let dt = PrimitiveDateTime::new(date_time.date(), date_time.time());
         dt.assume_timezone(timezone)
-            .map(|v| ZonedDateTime {
+            .map_all(|v| ZonedDateTime {
                 date_time: *v,
                 timezone
             })

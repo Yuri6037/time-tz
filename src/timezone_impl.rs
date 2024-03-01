@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::binary_search::binary_search;
-use crate::{Offset, OffsetResult, TimeZone};
+use crate::{Offset, OffsetError, OffsetResult, TimeZone};
 use std::cmp::Ordering;
 use std::ops::Index;
 use time::{OffsetDateTime, UtcOffset};
@@ -168,51 +168,51 @@ impl TimeZone for Tz {
         if let Some(i) = binary_search(0, self.set.len(), |i| self.set.span_local(i).cmp(timestamp))
         {
             return if self.set.len() == 1 {
-                OffsetResult::Some(TzOffset {
+                Ok(TzOffset {
                     timespan: &self.set[i],
                 })
             } else if i == 0 && self.set.span_local(1).contains(timestamp) {
-                OffsetResult::Ambiguous(
+                Err(OffsetError::Ambiguous(
                     TzOffset {
                         timespan: &self.set[0],
                     },
                     TzOffset {
                         timespan: &self.set[1],
                     },
-                )
+                ))
             } else if i == 0 {
-                OffsetResult::Some(TzOffset {
+                Ok(TzOffset {
                     timespan: &self.set[0],
                 })
             } else if self.set.span_local(i - 1).contains(timestamp) {
-                OffsetResult::Ambiguous(
+                Err(OffsetError::Ambiguous(
                     TzOffset {
                         timespan: &self.set[i - 1],
                     },
                     TzOffset {
                         timespan: &self.set[i],
                     },
-                )
+                ))
             } else if i == self.set.len() - 1 {
-                OffsetResult::Some(TzOffset {
+                Ok(TzOffset {
                     timespan: &self.set[i],
                 })
             } else if self.set.span_local(i + 1).contains(timestamp) {
-                OffsetResult::Ambiguous(
+                Err(OffsetError::Ambiguous(
                     TzOffset {
                         timespan: &self.set[i],
                     },
                     TzOffset {
                         timespan: &self.set[i + 1],
                     },
-                )
+                ))
             } else {
-                OffsetResult::Some(TzOffset {
+                Ok(TzOffset {
                     timespan: &self.set[i],
                 })
             };
         }
-        OffsetResult::None
+        Err(OffsetError::None)
     }
 
     fn get_offset_primary(&self) -> Self::Offset {
