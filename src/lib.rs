@@ -43,8 +43,8 @@ mod timezone_impl;
 #[cfg(feature = "db")]
 pub mod timezones;
 
-pub use interface::*;
 pub use ext::*;
+pub use interface::*;
 
 #[cfg(feature = "system")]
 pub mod system;
@@ -57,13 +57,13 @@ pub use timezone_impl::Tz;
 
 #[cfg(test)]
 mod tests {
-    use crate::{OffsetResultExt, ToTimezone};
     use crate::timezones;
+    use crate::zoned::Duration;
     use crate::Offset;
     use crate::OffsetDateTimeExt;
     use crate::PrimitiveDateTimeExt;
     use crate::TimeZone;
-    use crate::zoned::Duration;
+    use crate::{OffsetResultExt, ToTimezone};
     use time::macros::{datetime, offset};
     use time::OffsetDateTime;
 
@@ -184,7 +184,8 @@ mod tests {
         assert_eq!(
             datetime!(2023-03-26 6:00 UTC)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .replace_time(time::Time::MIDNIGHT).unwrap_first()
+                .replace_time(time::Time::MIDNIGHT)
+                .unwrap_first()
                 .offset_date_time(),
             datetime!(2023-03-25 23:00 UTC)
         );
@@ -194,39 +195,57 @@ mod tests {
     fn zoned_date_time_add_duration() {
         assert_eq!(
             (datetime!(2023-01-01 22:00)
-                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + Duration::days(1))
-                .offset_date_time(),
-            datetime!(2023-01-02 22:00).with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first().offset_date_time()
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                + Duration::days(1))
+            .offset_date_time(),
+            datetime!(2023-01-02 22:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                .offset_date_time()
         );
         assert_eq!(
             (datetime!(2023-03-25 22:00)
-                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + Duration::days(1))
-                .offset_date_time(),
-            datetime!(2023-03-26 22:00).with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first().offset_date_time()
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                + Duration::days(1))
+            .offset_date_time(),
+            datetime!(2023-03-26 22:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                .offset_date_time()
         );
         assert_eq!(
             (datetime!(2023-03-25 22:00)
-                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + Duration::hours(24))
-                .offset_date_time(),
-            datetime!(2023-03-26 23:00).with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first().offset_date_time()
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                + Duration::hours(24))
+            .offset_date_time(),
+            datetime!(2023-03-26 23:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                .offset_date_time()
         );
         assert_eq!(
             (datetime!(2023-03-26 1:00)
-                .with_timezone(timezones::db::europe::STOCKHOLM).unwrap_first() + Duration::hours(1))
-                .offset_date_time(),
-            datetime!(2023-03-26 3:00).with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first().offset_date_time()
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                + Duration::hours(1))
+            .offset_date_time(),
+            datetime!(2023-03-26 3:00)
+                .with_timezone(timezones::db::europe::STOCKHOLM)
+                .unwrap_first()
+                .offset_date_time()
         );
     }
 
     #[test]
     fn errors() {
-        let datetime = datetime!(2024-03-31 02:30:00).assume_timezone(timezones::db::europe::BUDAPEST);
+        let datetime =
+            datetime!(2024-03-31 02:30:00).assume_timezone(timezones::db::europe::BUDAPEST);
         assert!(datetime.is_none());
-        let datetime = datetime!(2024-03-31 02:29:00).assume_timezone(timezones::db::europe::BUDAPEST);
+        let datetime =
+            datetime!(2024-03-31 02:29:00).assume_timezone(timezones::db::europe::BUDAPEST);
         assert!(datetime.is_none());
     }
 }

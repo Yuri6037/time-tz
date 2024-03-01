@@ -28,7 +28,7 @@
 
 use time::{OffsetDateTime, PrimitiveDateTime};
 
-use crate::{TimeZone, zoned, OffsetResult, Offset, timezones, ToTimezone, OffsetError};
+use crate::{timezones, zoned, Offset, OffsetError, OffsetResult, TimeZone, ToTimezone};
 
 mod sealing {
     use crate::OffsetResult;
@@ -120,15 +120,13 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
     fn assume_timezone<T: TimeZone>(&self, tz: &T) -> OffsetResult<OffsetDateTime> {
         match tz.get_offset_local(&self.assume_utc()) {
             Ok(a) => Ok(self.assume_offset(a.to_utc())),
-            Err(e) => {
-                match e {
-                    OffsetError::Ambiguous(a, b) => Err(OffsetError::Ambiguous(
-                        self.assume_offset(a.to_utc()),
-                        self.assume_offset(b.to_utc())
-                    )),
-                    OffsetError::None => Err(OffsetError::None)
-                }
-            }
+            Err(e) => match e {
+                OffsetError::Ambiguous(a, b) => Err(OffsetError::Ambiguous(
+                    self.assume_offset(a.to_utc()),
+                    self.assume_offset(b.to_utc()),
+                )),
+                OffsetError::None => Err(OffsetError::None),
+            },
         }
     }
 
@@ -175,7 +173,7 @@ impl<T> OffsetResultExt<T> for OffsetResult<T> {
     fn map_all<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetResult<R> {
         match self {
             Ok(a) => Ok(f(a)),
-            Err(e) => Err(e.map(f))
+            Err(e) => Err(e.map(f)),
         }
     }
 
@@ -190,14 +188,14 @@ impl<T> OffsetResultExt<T> for OffsetResult<T> {
     fn take_first(self) -> Option<T> {
         match self {
             Ok(a) => Some(a),
-            Err(e) => e.take_first()
+            Err(e) => e.take_first(),
         }
     }
 
     fn take_second(self) -> Option<T> {
         match self {
             Ok(a) => Some(a),
-            Err(e) => e.take_second()
+            Err(e) => e.take_second(),
         }
     }
 
@@ -208,14 +206,14 @@ impl<T> OffsetResultExt<T> for OffsetResult<T> {
     fn is_none(&self) -> bool {
         match self {
             Ok(_) => false,
-            Err(e) => e.is_none()
+            Err(e) => e.is_none(),
         }
     }
 
     fn is_ambiguous(&self) -> bool {
         match self {
             Ok(_) => false,
-            Err(e) => e.is_ambiguous()
+            Err(e) => e.is_ambiguous(),
         }
     }
 }

@@ -26,10 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::ToTimezone;
 use crate::timezone_impl::internal_tz_new;
 use crate::timezone_impl::FixedTimespan;
 use crate::timezone_impl::FixedTimespanSet;
+use crate::ToTimezone;
 
 use crate::timezone_impl::Tz;
 use phf::Map;

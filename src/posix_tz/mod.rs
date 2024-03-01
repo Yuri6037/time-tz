@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Offset, TimeZone, timezone_impl::Tz, ToTimezone};
+use crate::{timezone_impl::Tz, Offset, TimeZone, ToTimezone};
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
 use time::{OffsetDateTime, UtcOffset};
@@ -91,7 +91,7 @@ pub enum Error {
 
     /// The resulting date time would be out of range.
     #[error("resulting date time would be out of range")]
-    OutOfRange
+    OutOfRange,
 }
 
 /// A POSIX "timezone" offset.
@@ -184,7 +184,7 @@ impl<'a> PosixTz<'a> {
         let offset = self.get_offset(date_time)?;
         match date_time.checked_to_offset(offset.to_utc()) {
             Some(v) => Ok(v),
-            None => Err(Error::OutOfRange)
+            None => Err(Error::OutOfRange),
         }
     }
 

@@ -27,15 +27,15 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Support for getting time zone information from the target system.
-//! 
+//!
 //! Currently only supported for Windows, Unix, and WASM targets.
 
-use crate::timezones::get_by_name;
 use crate::timezone_impl::Tz;
+use crate::timezones::get_by_name;
 use thiserror::Error;
 
 #[cfg(target_family = "wasm")]
-use js_sys::{ Intl, Reflect, Array, Object };
+use js_sys::{Array, Intl, Object, Reflect};
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::JsValue;
 
@@ -61,16 +61,16 @@ pub enum Error {
     /// The timezone doesn't exist in the crate's database.
     #[error("unknown timezone name")]
     Unknown,
-    
+
     /// The target platform is not supported. Windows, Unix, and WASM targets are the only supported for the system feature at this moment.
     #[error("unsupported platform")]
     Unsupported,
 }
 
 /// Gets the current timezone from the system.
-/// 
+///
 /// Currently only supported for Windows, Unix, and WASM targets.
-/// 
+///
 /// # Errors
 /// Returns an [Error](enum@Error) if the timezone cannot be determined.
 pub fn get_timezone() -> Result<&'static Tz, Error> {

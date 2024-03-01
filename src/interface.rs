@@ -85,7 +85,7 @@ pub enum OffsetError<T> {
     Ambiguous(T, T),
 
     /// The date time is invalid.
-    None
+    None,
 }
 
 impl<T> OffsetError<T> {
@@ -93,7 +93,7 @@ impl<T> OffsetError<T> {
     pub fn is_none(&self) -> bool {
         match self {
             OffsetError::Ambiguous(_, _) => false,
-            OffsetError::None => true
+            OffsetError::None => true,
         }
     }
 
@@ -101,7 +101,7 @@ impl<T> OffsetError<T> {
     pub fn is_ambiguous(&self) -> bool {
         match self {
             OffsetError::Ambiguous(_, _) => true,
-            OffsetError::None => false
+            OffsetError::None => false,
         }
     }
 
@@ -109,7 +109,7 @@ impl<T> OffsetError<T> {
     pub fn unwrap_first(self) -> T {
         match self {
             OffsetError::Ambiguous(a, _) => a,
-            OffsetError::None => panic!("Attempt to unwrap an invalid offset")
+            OffsetError::None => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -117,7 +117,7 @@ impl<T> OffsetError<T> {
     pub fn unwrap_second(self) -> T {
         match self {
             OffsetError::Ambiguous(_, b) => b,
-            OffsetError::None => panic!("Attempt to unwrap an invalid offset")
+            OffsetError::None => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -125,7 +125,7 @@ impl<T> OffsetError<T> {
     pub fn take_first(self) -> Option<T> {
         match self {
             OffsetError::Ambiguous(a, _) => Some(a),
-            OffsetError::None => None
+            OffsetError::None => None,
         }
     }
 
@@ -133,7 +133,7 @@ impl<T> OffsetError<T> {
     pub fn take_second(self) -> Option<T> {
         match self {
             OffsetError::Ambiguous(_, b) => Some(b),
-            OffsetError::None => None
+            OffsetError::None => None,
         }
     }
 
@@ -141,7 +141,7 @@ impl<T> OffsetError<T> {
     pub fn map<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetError<R> {
         match self {
             OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(f(a), f(b)),
-            OffsetError::None => OffsetError::None
+            OffsetError::None => OffsetError::None,
         }
     }
 }
