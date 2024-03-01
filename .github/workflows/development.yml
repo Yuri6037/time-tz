@@ -1,0 +1,141 @@
+name: Development
+
+on:
+  - push
+  - workflow_dispatch
+
+jobs:
+  test-build:
+    name: Build & Test
+    strategy:
+      matrix:
+        os:
+          - ubuntu-20.04
+          - macos-11
+          - windows-2019
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --all-features
+      - name: Test
+        uses: bp3d-actions/cargo@main
+        with:
+          check-name: cargo test (${{ matrix.os }})
+          command: test
+          args: --all-features --no-fail-fast
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  clippy:
+    name: Check | Clippy
+    if: ${{ always() }}
+    needs: test-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run check
+        uses: bp3d-actions/clippy-check@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+
+  audit:
+    name: Check | Audit
+    if: ${{ always() }}
+    needs: test-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Audit Tool
+        run: cargo install cargo-audit
+      - name: Run check
+        uses: bp3d-actions/audit-check@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  fmt:
+    name: Format Code
+    if: ${{ always() && github.ref != 'refs/heads/master' }}
+    needs:
+      - clippy
+      - audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run code formatter
+        uses: bp3d-actions/rustfmt-check@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  version:
+    name: Get Version
+    needs: test-build
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.version.outputs.name }}
+      version: ${{ steps.version.outputs.version }}
+      isnew: ${{ steps.version.outputs.isnew }}
+      ispre: ${{ steps.version.outputs.ispre }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Get Version
+        id: version
+        uses: bp3d-actions/cargo-version@main
+        with:
+          mode: get
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  create-pre-release:
+    name: Create Pre Release
+    needs: version
+    if: github.ref == 'refs/heads/develop' && needs.version.outputs.isnew == 'true' && needs.version.outputs.ispre == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Setup cargo
+        run: cargo login ${{ secrets.RELEASE_TOKEN }}
+      - name: Publish
+        run: cargo publish
+      - name: Create
+        uses: ncipollo/release-action@main
+        with:
+          tag: ${{ needs.version.outputs.version }}
+          commit: ${{ github.ref }}
+          prerelease: true
+          name: ${{ needs.version.outputs.name }} release ${{ needs.version.outputs.version }}
+          body: "[Link to crates.io](https://crates.io/crates/${{ needs.version.outputs.name }})"
+
+  create-release-pr:
+    name: Create Release Pull Request
+    needs: version
+    if: needs.version.outputs.isnew == 'true' && needs.version.outputs.ispre == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Create Pull Request
+        uses: repo-sync/pull-request@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          destination_branch: master
+          pr_title: Release ${{ needs.version.outputs.version }}
