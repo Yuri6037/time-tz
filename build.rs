@@ -79,7 +79,7 @@ fn parse_win_cldr_db() -> phf_codegen::Map<String> {
         while let Some(item) = split.next() {
             if item.trim().is_empty() {
                 continue;
-            }    
+            }
             str += "&internal_tz_new(&";
             str += item;
             str.push(')');
