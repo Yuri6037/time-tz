@@ -221,4 +221,12 @@ mod tests {
                 .unwrap_first().offset_date_time()
         );
     }
+
+    #[test]
+    fn errors() {
+        let datetime = datetime!(2024-03-31 02:30:00).assume_timezone(timezones::db::europe::BUDAPEST);
+        assert!(datetime.is_none());
+        let datetime = datetime!(2024-03-31 02:29:00).assume_timezone(timezones::db::europe::BUDAPEST);
+        assert!(datetime.is_none());
+    }
 }

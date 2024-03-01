@@ -63,9 +63,15 @@ pub fn get_by_name(name: &str) -> Option<&'static Tz> {
 
 impl ToTimezone<&str> for OffsetDateTime {
     type Out = Option<OffsetDateTime>;
+    type CheckedOut = Self::Out;
 
     fn to_timezone(&self, tz: &str) -> Self::Out {
         let tz = get_by_name(tz)?;
         Some(self.to_timezone(tz))
+    }
+
+    fn checked_to_timezone(&self, tz: &str) -> Self::CheckedOut {
+        let tz = get_by_name(tz)?;
+        self.checked_to_timezone(tz)
     }
 }

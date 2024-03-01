@@ -88,6 +88,10 @@ pub enum Error {
     /// We've exceeded the maximum date supported by time-rs.
     #[error("value of Date too large")]
     DateTooLarge,
+
+    /// The resulting date time would be out of range.
+    #[error("resulting date time would be out of range")]
+    OutOfRange
 }
 
 /// A POSIX "timezone" offset.
@@ -154,9 +158,34 @@ impl<'a> PosixTz<'a> {
     ///
     /// Returns an [Error](crate::posix_tz::Error) if the date_time cannot be represented in this
     /// "timezone".
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the date_time + computed_offset would be out of range according to
+    /// [OffsetDateTime](OffsetDateTime).
     pub fn convert(&self, date_time: &OffsetDateTime) -> Result<OffsetDateTime, Error> {
         let offset = self.get_offset(date_time)?;
         Ok(date_time.to_offset(offset.to_utc()))
+    }
+
+    /// Convert the given date_time to this "timezone".
+    ///
+    /// # Arguments
+    ///
+    /// * `date_time`: the date time to convert.
+    ///
+    /// returns: Result<OffsetDateTime, Error>
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error](crate::posix_tz::Error) if the date_time cannot be represented in this
+    /// "timezone".
+    pub fn checked_convert(&self, date_time: &OffsetDateTime) -> Result<OffsetDateTime, Error> {
+        let offset = self.get_offset(date_time)?;
+        match date_time.checked_to_offset(offset.to_utc()) {
+            Some(v) => Ok(v),
+            None => Err(Error::OutOfRange)
+        }
     }
 
     /// Calculates the offset to add to the given date_time to convert it to this "timezone".
@@ -207,8 +236,13 @@ impl<'a> PosixTz<'a> {
 
 impl<'a> ToTimezone<&PosixTz<'a>> for OffsetDateTime {
     type Out = Result<OffsetDateTime, Error>;
+    type CheckedOut = Self::Out;
 
     fn to_timezone(&self, tz: &PosixTz) -> Self::Out {
         tz.convert(self)
+    }
+
+    fn checked_to_timezone(&self, tz: &PosixTz<'a>) -> Self::CheckedOut {
+        tz.checked_convert(self)
     }
 }

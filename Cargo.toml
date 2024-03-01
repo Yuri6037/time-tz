@@ -1,6 +1,6 @@
 [package]
 name = "time-tz"
-version = "3.0.0-rc.1.0.0"
+version = "3.0.0-rc.2.0.0"
 edition = "2021"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 description = "Implementation of tz database (IANA) for the time Rust crate."

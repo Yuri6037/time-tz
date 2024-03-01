@@ -33,13 +33,24 @@ pub trait ToTimezone<T> {
     /// The output type.
     type Out;
 
+    /// The output type for checked_to_timezone.
+    type CheckedOut;
+
     /// Converts self to a different timezone.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the date_time + computed_offset would be out of range according to
+    /// [OffsetDateTime](OffsetDateTime).
     fn to_timezone(&self, tz: T) -> Self::Out;
+
+    /// Converts self to a different timezone.
+    fn checked_to_timezone(&self, tz: T) -> Self::CheckedOut;
 }
 
 /// This trait represents a particular timezone offset.
 pub trait Offset {
-    /// Converts this timezone offset to a [UtcOffset](time::UtcOffset).
+    /// Converts this timezone offset to a [UtcOffset](UtcOffset).
     fn to_utc(&self) -> UtcOffset;
 
     /// Returns the name of this offset.

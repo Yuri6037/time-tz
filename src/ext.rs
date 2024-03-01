@@ -124,9 +124,15 @@ impl OffsetDateTimeExt for OffsetDateTime {
 
 impl<T: TimeZone> ToTimezone<&T> for OffsetDateTime {
     type Out = OffsetDateTime;
+    type CheckedOut = Option<OffsetDateTime>;
 
     fn to_timezone(&self, tz: &T) -> OffsetDateTime {
         let offset = tz.get_offset_utc(self);
         self.to_offset(offset.to_utc())
+    }
+
+    fn checked_to_timezone(&self, tz: &T) -> Self::CheckedOut {
+        let offset = tz.get_offset_utc(self);
+        self.checked_to_offset(offset.to_utc())
     }
 }
