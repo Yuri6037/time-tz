@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Build
@@ -37,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -55,6 +59,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Install Audit Tool
@@ -74,6 +80,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
