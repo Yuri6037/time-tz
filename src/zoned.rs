@@ -32,7 +32,7 @@ use time::{Date, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
 
 use crate::{OffsetResult, OffsetResultExt, PrimitiveDateTimeExt, TimeZone, ToTimezone};
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct ZonedDateTime<'a, T: TimeZone> {
     date_time: OffsetDateTime,
     timezone: &'a T,
@@ -45,7 +45,7 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
     ) -> OffsetResult<ZonedDateTime<'a, T>> {
         date_time
             .assume_timezone(timezone)
-            .map_all(|v| ZonedDateTime {
+            .map_and_err(|v| ZonedDateTime {
                 date_time: *v,
                 timezone,
             })
@@ -64,7 +64,7 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
         timezone: &'a T,
     ) -> OffsetResult<ZonedDateTime<'a, T>> {
         let dt = PrimitiveDateTime::new(date_time.date(), date_time.time());
-        dt.assume_timezone(timezone).map_all(|v| ZonedDateTime {
+        dt.assume_timezone(timezone).map_and_err(|v| ZonedDateTime {
             date_time: *v,
             timezone,
         })
@@ -98,7 +98,7 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
         self.date_time.offset()
     }
 
-    /// Computes and returns the [OffsetDateTime](time::OffsetDateTime) from this ZonedDateTime.
+    /// Computes and returns the [OffsetDateTime](OffsetDateTime) from this ZonedDateTime.
     pub fn offset_date_time(self) -> OffsetDateTime {
         self.date_time
     }
@@ -109,7 +109,7 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
     }
 
     /// Replaces the timezone component of this ZonedDateTime.
-    pub fn replace_timezone<'b, T1: TimeZone>(self, timezone: &'b T1) -> ZonedDateTime<'b, T1> {
+    pub fn replace_timezone<T1: TimeZone>(self, timezone: &T1) -> ZonedDateTime<T1> {
         ZonedDateTime::from_utc(self.date_time, timezone)
     }
 }
@@ -159,15 +159,15 @@ impl<'a, T: TimeZone> Add<Duration> for ZonedDateTime<'a, T> {
     fn add(self, rhs: Duration) -> Self::Output {
         match rhs {
             Duration::Date(v) => {
-                ZonedDateTime::from_local_offset(self.date_time + v, self.timezone).unwrap_first()
+                ZonedDateTime::from_local_offset(self.date_time + v, self.timezone)
+                    .unwrap_or_else(|e| e.unwrap_first())
             }
             Duration::Time(v) => {
                 let offset = self.offset();
                 ZonedDateTime::from_local_offset(
                     self.date_time + v + time::Duration::seconds(offset.whole_seconds() as _),
                     self.timezone,
-                )
-                .unwrap_first()
+                ).unwrap_or_else(|e| e.unwrap_first())
             }
         }
     }
@@ -179,15 +179,15 @@ impl<'a, T: TimeZone> Sub<Duration> for ZonedDateTime<'a, T> {
     fn sub(self, rhs: Duration) -> Self::Output {
         match rhs {
             Duration::Date(v) => {
-                ZonedDateTime::from_local_offset(self.date_time - v, self.timezone).unwrap_first()
+                ZonedDateTime::from_local_offset(self.date_time - v, self.timezone)
+                    .unwrap_or_else(|e| e.unwrap_first())
             }
             Duration::Time(v) => {
                 let offset = self.offset();
                 ZonedDateTime::from_local_offset(
                     self.date_time - v - time::Duration::seconds(offset.whole_seconds() as _),
                     self.timezone,
-                )
-                .unwrap_first()
+                ).unwrap_or_else(|e| e.unwrap_first())
             }
         }
     }

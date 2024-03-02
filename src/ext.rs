@@ -92,25 +92,10 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
 
 pub trait OffsetResultExt<T>: sealing::OffsetResultExt {
     /// Maps this [OffsetResult] to a different result type.
-    fn map_all<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetResult<R>;
-
-    /// Unwraps this [OffsetResult] resolving ambiguity by taking the first result.
-    fn unwrap_first(self) -> T;
-
-    /// Unwraps this [OffsetResult] resolving ambiguity by taking the second result.
-    fn unwrap_second(self) -> T;
-
-    /// Turns this [OffsetResult] into an Option resolving ambiguity by taking the first result.
-    fn take_first(self) -> Option<T>;
-
-    /// Turns this [OffsetResult] into an Option resolving ambiguity by taking the second result.
-    fn take_second(self) -> Option<T>;
-
-    /// Returns true if this [OffsetResult] is neither ambiguous nor undefined.
-    fn is_some(&self) -> bool;
+    fn map_and_err<R, F: Fn(&T) -> R>(self, f: F) -> OffsetResult<R>;
 
     /// Returns true if this [OffsetResult] is None.
-    fn is_none(&self) -> bool;
+    fn is_undefined(&self) -> bool;
 
     /// Returns true if this [OffsetResult] is ambiguous.
     fn is_ambiguous(&self) -> bool;
@@ -170,50 +155,15 @@ impl<T: TimeZone> ToTimezone<&T> for OffsetDateTime {
 }
 
 impl<T> OffsetResultExt<T> for OffsetResult<T> {
-    fn map_all<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetResult<R> {
-        match self {
-            Ok(a) => Ok(f(a)),
-            Err(e) => Err(e.map(f)),
-        }
+    fn map_and_err<R, F: Fn(&T) -> R>(self, f: F) -> OffsetResult<R> {
+        self.map(|a| f(&a)).map_err(|e| e.map(f))
     }
 
-    fn unwrap_first(self) -> T {
-        self.unwrap_or_else(|e| e.unwrap_first())
-    }
-
-    fn unwrap_second(self) -> T {
-        self.unwrap_or_else(|e| e.unwrap_second())
-    }
-
-    fn take_first(self) -> Option<T> {
-        match self {
-            Ok(a) => Some(a),
-            Err(e) => e.take_first(),
-        }
-    }
-
-    fn take_second(self) -> Option<T> {
-        match self {
-            Ok(a) => Some(a),
-            Err(e) => e.take_second(),
-        }
-    }
-
-    fn is_some(&self) -> bool {
-        self.is_ok()
-    }
-
-    fn is_none(&self) -> bool {
-        match self {
-            Ok(_) => false,
-            Err(e) => e.is_none(),
-        }
+    fn is_undefined(&self) -> bool {
+        self.as_ref().map(|_| false).unwrap_or_else(|e| e.is_undefined())
     }
 
     fn is_ambiguous(&self) -> bool {
-        match self {
-            Ok(_) => false,
-            Err(e) => e.is_ambiguous(),
-        }
+        self.as_ref().map(|_| false).unwrap_or_else(|e| e.is_ambiguous())
     }
 }

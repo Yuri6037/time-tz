@@ -83,7 +83,7 @@ pub trait TimeZone {
 /// This represents the possible types of errors when trying to find a local offset.
 #[derive(Clone, Copy, Debug)]
 pub enum OffsetError<T> {
-    /// The date time is ambiguous (2 are possible).
+    /// The date time is ambiguous (2 offsets matches for the given date time in the given timezone).
     Ambiguous(T, T),
 
     /// No offset was found for the given date time in the given timezone.
@@ -93,7 +93,7 @@ pub enum OffsetError<T> {
 impl<T: Display> Display for OffsetError<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            OffsetError::Ambiguous(a, b) => write!(f, "ambiguous offset found for the given date time in the given timezone ({} and {})", a, b),
+            OffsetError::Ambiguous(a, b) => write!(f, "multiple offsets matches for the given date time in the given timezone ({} and {})", a, b),
             OffsetError::Undefined => write!(f, "no offset found for the given date time in the given timezone")
         }
     }
@@ -102,8 +102,8 @@ impl<T: Display> Display for OffsetError<T> {
 impl<T: Display + Debug> Error for OffsetError<T> {}
 
 impl<T> OffsetError<T> {
-    /// Returns true if this [OffsetError] is None.
-    pub fn is_none(&self) -> bool {
+    /// Returns true if this [OffsetError] is undefined.
+    pub fn is_undefined(&self) -> bool {
         match self {
             OffsetError::Ambiguous(_, _) => false,
             OffsetError::Undefined => true,
@@ -150,10 +150,18 @@ impl<T> OffsetError<T> {
         }
     }
 
-    /// Maps this [OffsetError] to a different result type.
-    pub fn map<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetError<R> {
+    /// Creates a reference to this [OffsetError].
+    pub fn as_ref(&self) -> OffsetError<&T> {
         match self {
-            OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(f(a), f(b)),
+            OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(a, b),
+            OffsetError::Undefined => OffsetError::Undefined
+        }
+    }
+
+    /// Maps this [OffsetError] to a different result type.
+    pub fn map<R, F: Fn(&T) -> R>(self, f: F) -> OffsetError<R> {
+        match self {
+            OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(f(&a), f(&b)),
             OffsetError::Undefined => OffsetError::Undefined,
         }
     }

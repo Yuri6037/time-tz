@@ -149,7 +149,7 @@ mod tests {
     fn handles_broken_time() {
         assert!(datetime!(2022-03-27 02:30)
             .assume_timezone(timezones::db::CET)
-            .is_none());
+            .is_undefined());
     }
 
     #[test]
@@ -158,13 +158,13 @@ mod tests {
         assert_eq!(
             datetime!(2022-10-30 02:30)
                 .assume_timezone(timezones::db::CET)
-                .unwrap_first(),
+                .unwrap_or_else(|e| e.unwrap_first()),
             datetime!(2022-10-30 02:30 +02:00)
         );
         assert_eq!(
             datetime!(2022-10-30 02:30)
                 .assume_timezone(timezones::db::CET)
-                .unwrap_second(),
+                .unwrap_or_else(|e| e.unwrap_second()),
             datetime!(2022-10-30 02:30 +01:00)
         );
     }
@@ -174,7 +174,7 @@ mod tests {
         assert_eq!(
             datetime!(2023-03-26 0:00)
                 .assume_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first(),
+                .unwrap(),
             datetime!(2023-03-25 23:00 UTC)
         );
     }
@@ -185,7 +185,7 @@ mod tests {
             datetime!(2023-03-26 6:00 UTC)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
                 .replace_time(time::Time::MIDNIGHT)
-                .unwrap_first()
+                .unwrap()
                 .offset_date_time(),
             datetime!(2023-03-25 23:00 UTC)
         );
@@ -196,45 +196,45 @@ mod tests {
         assert_eq!(
             (datetime!(2023-01-01 22:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 + Duration::days(1))
             .offset_date_time(),
             datetime!(2023-01-02 22:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 .offset_date_time()
         );
         assert_eq!(
             (datetime!(2023-03-25 22:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 + Duration::days(1))
             .offset_date_time(),
             datetime!(2023-03-26 22:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 .offset_date_time()
         );
         assert_eq!(
             (datetime!(2023-03-25 22:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 + Duration::hours(24))
             .offset_date_time(),
             datetime!(2023-03-26 23:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 .offset_date_time()
         );
         assert_eq!(
             (datetime!(2023-03-26 1:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 + Duration::hours(1))
             .offset_date_time(),
             datetime!(2023-03-26 3:00)
                 .with_timezone(timezones::db::europe::STOCKHOLM)
-                .unwrap_first()
+                .unwrap()
                 .offset_date_time()
         );
     }
@@ -243,9 +243,9 @@ mod tests {
     fn errors() {
         let datetime =
             datetime!(2024-03-31 02:30:00).assume_timezone(timezones::db::europe::BUDAPEST);
-        assert!(datetime.is_none());
+        assert!(datetime.is_undefined());
         let datetime =
             datetime!(2024-03-31 02:29:00).assume_timezone(timezones::db::europe::BUDAPEST);
-        assert!(datetime.is_none());
+        assert!(datetime.is_undefined());
     }
 }
