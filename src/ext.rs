@@ -160,10 +160,14 @@ impl<T> OffsetResultExt<T> for OffsetResult<T> {
     }
 
     fn is_undefined(&self) -> bool {
-        self.as_ref().map(|_| false).unwrap_or_else(|e| e.is_undefined())
+        self.as_ref()
+            .map(|_| false)
+            .unwrap_or_else(|e| e.is_undefined())
     }
 
     fn is_ambiguous(&self) -> bool {
-        self.as_ref().map(|_| false).unwrap_or_else(|e| e.is_ambiguous())
+        self.as_ref()
+            .map(|_| false)
+            .unwrap_or_else(|e| e.is_ambiguous())
     }
 }

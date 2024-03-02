@@ -167,7 +167,8 @@ impl<'a, T: TimeZone> Add<Duration> for ZonedDateTime<'a, T> {
                 ZonedDateTime::from_local_offset(
                     self.date_time + v + time::Duration::seconds(offset.whole_seconds() as _),
                     self.timezone,
-                ).unwrap_or_else(|e| e.unwrap_first())
+                )
+                .unwrap_or_else(|e| e.unwrap_first())
             }
         }
     }
@@ -187,7 +188,8 @@ impl<'a, T: TimeZone> Sub<Duration> for ZonedDateTime<'a, T> {
                 ZonedDateTime::from_local_offset(
                     self.date_time - v - time::Duration::seconds(offset.whole_seconds() as _),
                     self.timezone,
-                ).unwrap_or_else(|e| e.unwrap_first())
+                )
+                .unwrap_or_else(|e| e.unwrap_first())
             }
         }
     }

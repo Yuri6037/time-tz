@@ -154,7 +154,7 @@ impl<T> OffsetError<T> {
     pub fn as_ref(&self) -> OffsetError<&T> {
         match self {
             OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(a, b),
-            OffsetError::Undefined => OffsetError::Undefined
+            OffsetError::Undefined => OffsetError::Undefined,
         }
     }
 
