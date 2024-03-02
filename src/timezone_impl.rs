@@ -212,7 +212,7 @@ impl TimeZone for Tz {
                 })
             };
         }
-        Err(OffsetError::None)
+        Err(OffsetError::Undefined)
     }
 
     fn get_offset_primary(&self) -> Self::Offset {

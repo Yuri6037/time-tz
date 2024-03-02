@@ -125,7 +125,7 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
                     self.assume_offset(a.to_utc()),
                     self.assume_offset(b.to_utc()),
                 )),
-                OffsetError::None => Err(OffsetError::None),
+                OffsetError::Undefined => Err(OffsetError::Undefined),
             },
         }
     }

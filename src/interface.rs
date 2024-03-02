@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
 use time::{OffsetDateTime, UtcOffset};
 
 /// This trait allows conversions from one timezone to another.
@@ -84,16 +86,27 @@ pub enum OffsetError<T> {
     /// The date time is ambiguous (2 are possible).
     Ambiguous(T, T),
 
-    /// The date time is invalid.
-    None,
+    /// No offset was found for the given date time in the given timezone.
+    Undefined,
 }
+
+impl<T: Display> Display for OffsetError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OffsetError::Ambiguous(a, b) => write!(f, "ambiguous offset found for the given date time in the given timezone ({} and {})", a, b),
+            OffsetError::Undefined => write!(f, "no offset found for the given date time in the given timezone")
+        }
+    }
+}
+
+impl<T: Display + Debug> Error for OffsetError<T> {}
 
 impl<T> OffsetError<T> {
     /// Returns true if this [OffsetError] is None.
     pub fn is_none(&self) -> bool {
         match self {
             OffsetError::Ambiguous(_, _) => false,
-            OffsetError::None => true,
+            OffsetError::Undefined => true,
         }
     }
 
@@ -101,7 +114,7 @@ impl<T> OffsetError<T> {
     pub fn is_ambiguous(&self) -> bool {
         match self {
             OffsetError::Ambiguous(_, _) => true,
-            OffsetError::None => false,
+            OffsetError::Undefined => false,
         }
     }
 
@@ -109,7 +122,7 @@ impl<T> OffsetError<T> {
     pub fn unwrap_first(self) -> T {
         match self {
             OffsetError::Ambiguous(a, _) => a,
-            OffsetError::None => panic!("Attempt to unwrap an invalid offset"),
+            OffsetError::Undefined => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -117,7 +130,7 @@ impl<T> OffsetError<T> {
     pub fn unwrap_second(self) -> T {
         match self {
             OffsetError::Ambiguous(_, b) => b,
-            OffsetError::None => panic!("Attempt to unwrap an invalid offset"),
+            OffsetError::Undefined => panic!("Attempt to unwrap an invalid offset"),
         }
     }
 
@@ -125,7 +138,7 @@ impl<T> OffsetError<T> {
     pub fn take_first(self) -> Option<T> {
         match self {
             OffsetError::Ambiguous(a, _) => Some(a),
-            OffsetError::None => None,
+            OffsetError::Undefined => None,
         }
     }
 
@@ -133,7 +146,7 @@ impl<T> OffsetError<T> {
     pub fn take_second(self) -> Option<T> {
         match self {
             OffsetError::Ambiguous(_, b) => Some(b),
-            OffsetError::None => None,
+            OffsetError::Undefined => None,
         }
     }
 
@@ -141,7 +154,7 @@ impl<T> OffsetError<T> {
     pub fn map<R, F: Fn(&T) -> R>(&self, f: F) -> OffsetError<R> {
         match self {
             OffsetError::Ambiguous(a, b) => OffsetError::Ambiguous(f(a), f(b)),
-            OffsetError::None => OffsetError::None,
+            OffsetError::Undefined => OffsetError::Undefined,
         }
     }
 }
