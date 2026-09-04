@@ -33,7 +33,7 @@ use parse_zoneinfo::table::{Table, TableBuilder};
 use parse_zoneinfo::transitions::TableTransitions;
 use serde::Deserialize;
 use serde_xml_rs::from_str;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -109,7 +109,8 @@ struct TimeZone<'a> {
 struct ModuleTree<'a> {
     pub name: &'a str,
     pub items: Vec<TimeZone<'a>>,
-    pub sub_modules: HashMap<&'a str, ModuleTree<'a>>,
+    // Ordered so the generated module tree is identical on every build.
+    pub sub_modules: BTreeMap<&'a str, ModuleTree<'a>>,
 }
 
 impl<'a> ModuleTree<'a> {
@@ -117,7 +118,7 @@ impl<'a> ModuleTree<'a> {
         ModuleTree {
             name,
             items: Vec::new(),
-            sub_modules: HashMap::new(),
+            sub_modules: BTreeMap::new(),
         }
     }
 
@@ -259,7 +260,7 @@ fn main() {
             }
         });
     let mut builder = TableBuilder::new();
-    let parser = LineParser::new();
+    let parser = LineParser::default();
     for line in lines {
         match parser.parse_str(&line).expect(PARSE_FAILURE) {
             Line::Space => {}
