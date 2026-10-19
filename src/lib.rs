@@ -78,6 +78,36 @@ mod tests {
     }
 
     #[test]
+    fn canada_2026_year_round_time() {
+        // tz 2026e: these zones stay on UTC-7, UTC-6 and UTC-5 after 2026-11-01.
+        let dt = datetime!(2026-12-15 12:00 UTC);
+        let zones = [
+            (timezones::db::america::VANCOUVER, offset!(-7)),
+            (timezones::db::america::EDMONTON, offset!(-6)),
+            (timezones::db::america::INUVIK, offset!(-6)),
+            (timezones::db::america::WINNIPEG, offset!(-5)),
+        ];
+        for (tz, expected) in zones {
+            assert_eq!(dt.to_timezone(tz).offset(), expected, "{}", tz.name());
+        }
+    }
+
+    #[test]
+    fn canada_windows_names() {
+        // Windows zone names added in 2026 (CLDR windowsZones.xml).
+        let names = [
+            ("British Columbia Standard Time", "America/Vancouver"),
+            ("Alberta Standard Time", "America/Edmonton"),
+            ("Manitoba Standard Time", "America/Winnipeg"),
+        ];
+        for (win, iana) in names {
+            let tz = timezones::get_by_name(win);
+            assert!(tz.is_some(), "{win}");
+            assert_eq!(tz, timezones::get_by_name(iana));
+        }
+    }
+
+    #[test]
     fn find() {
         let zones_iana = timezones::find_by_name("Asia");
         //let zones_win = timezones::find_by_name("China Standard Time");
