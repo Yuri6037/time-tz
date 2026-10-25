@@ -64,14 +64,14 @@ impl Span {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct FixedTimespan {
     pub utc_offset: i64,
     pub dst_offset: i64,
     pub name: &'static str,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct FixedTimespanSet {
     pub name: &'static str,
     pub first: FixedTimespan,
@@ -146,7 +146,7 @@ impl Offset for TzOffset {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Tz {
     set: &'static FixedTimespanSet,
 }

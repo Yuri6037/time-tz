@@ -109,7 +109,7 @@ impl<'a, T: TimeZone> ZonedDateTime<'a, T> {
     }
 
     /// Replaces the timezone component of this ZonedDateTime.
-    pub fn replace_timezone<T1: TimeZone>(self, timezone: &T1) -> ZonedDateTime<T1> {
+    pub fn replace_timezone<T1: TimeZone>(self, timezone: &T1) -> ZonedDateTime<'_, T1> {
         ZonedDateTime::from_utc(self.date_time, timezone)
     }
 }

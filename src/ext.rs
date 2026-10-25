@@ -87,7 +87,7 @@ pub trait PrimitiveDateTimeExt: sealing::PrimitiveDateTimeExt {
     /// # Arguments
     ///
     /// * `tz`: the target timezone.
-    fn with_timezone<T: TimeZone>(self, tz: &T) -> OffsetResult<zoned::ZonedDateTime<T>>;
+    fn with_timezone<T: TimeZone>(self, tz: &T) -> OffsetResult<zoned::ZonedDateTime<'_, T>>;
 }
 
 pub trait OffsetResultExt<T>: sealing::OffsetResultExt {
@@ -120,7 +120,7 @@ impl PrimitiveDateTimeExt for PrimitiveDateTime {
         self.assume_offset(offset.to_utc())
     }
 
-    fn with_timezone<T: TimeZone>(self, tz: &T) -> OffsetResult<zoned::ZonedDateTime<T>> {
+    fn with_timezone<T: TimeZone>(self, tz: &T) -> OffsetResult<zoned::ZonedDateTime<'_, T>> {
         zoned::ZonedDateTime::from_local(self, tz)
     }
 }
